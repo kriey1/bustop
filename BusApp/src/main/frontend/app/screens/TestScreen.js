@@ -7,9 +7,13 @@ export default function TestScreen() {
   return (
     <View style={styles.container}>
       <Text style={styles.text}>Test Screen</Text>
-      <Link href="./HomeScreen">
-        <Button title="Go back to Home" />
-      </Link>
+
+      <Button
+        title="Go to Main Page"
+        onPress={() => navigation.navigate('Main')}
+      />
+
+
     </View>
   );
 }

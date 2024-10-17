@@ -14,6 +14,10 @@ function HomeScreen({ navigation }) {
         title="Go to Main Page"
         onPress={() => navigation.navigate('Main')}
       />
+      <Button
+        title="Go to Login"
+        onPress={() => navigation.navigate('Login')}
+      />
     </View>
   );
 }
