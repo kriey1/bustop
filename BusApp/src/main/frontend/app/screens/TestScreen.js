@@ -12,8 +12,6 @@ export default function TestScreen() {
         title="Go to Main Page"
         onPress={() => navigation.navigate('Main')}
       />
-
-
     </View>
   );
 }
