@@ -2,14 +2,16 @@ import React, { useState } from 'react';
 import { View, Text, Button, StyleSheet, TextInput } from 'react-native';
 
 
-function LoginScreen({ navigation }) {
+function SignupgrScreen({ navigation }) {
     const [id, setId] = useState('');
     const [password, setPassword] = useState('');
+    const [name, setName] = useState('');
+    const [number, setNumber] = useState('');
 
     return (
         <View>
             
-            <Text>로그인페이지</Text>
+            <Text>회원가입페이지(보호자)</Text>
             <TextInput
                 placeholder="ID"
                 value={id}
@@ -21,11 +23,21 @@ function LoginScreen({ navigation }) {
                 onChangeText={setPassword}
                 secureTextEntry
             />
+            <TextInput
+                placeholder="이름"
+                value={name}
+                onChangeText={setName}
+            />
+            <TextInput
+                placeholder="전화번호"
+                value={number}
+                onChangeText={setNumber}
+            />
             <Button
-                title="Login"
+                title="완료"
                 onPress={() => navigation.navigate('Home')}
             />
         </View>
     );
 }
-export default LoginScreen;
+export default SignupgrScreen;
