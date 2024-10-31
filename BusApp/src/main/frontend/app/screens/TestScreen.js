@@ -3,14 +3,14 @@ import React from 'react';
 import { View, Text, Button, StyleSheet } from 'react-native';
 import { Link } from 'expo-router';
 
-export default function TestScreen() {
+function TestScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <Text style={styles.text}>Test Screen</Text>
 
       <Button
-        title="Go to Main Page"
-        onPress={() => navigation.navigate('Main')}
+        title="Go to home Page"
+        onPress={() => navigation.navigate('Home')}
       />
 
 
@@ -29,3 +29,5 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
 });
+
+export default TestScreen;
