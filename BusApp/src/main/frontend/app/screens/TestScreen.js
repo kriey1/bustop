@@ -1,33 +1,22 @@
-// app/screens/TestScreen.js
-import React from 'react';
-import { View, Text, Button, StyleSheet } from 'react-native';
-import { Link } from 'expo-router';
+// src/main/frontend/src/App.js
 
-function TestScreen({ navigation }) {
-  return (
-    <View style={styles.container}>
-      <Text style={styles.text}>Test Screen</Text>
+import React, {useEffect, useState} from 'react';
+import axios from 'axios';
 
-      <Button
-        title="Go to home Page"
-        onPress={() => navigation.navigate('Home')}
-      />
+function TestScreen() {
+   const [hello, setHello] = useState('')
 
+    useEffect(() => {
+        axios.get('/api/hello')
+        .then(response => setHello(response.data))
+        .catch(error => console.log(error))
+    }, []);
 
-    </View>
-  );
+    return (
+        <div>
+            백엔드에서 가져온 데이터입니다 : {hello}
+        </div>
+    );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  text: {
-    fontSize: 24,
-    marginBottom: 20,
-  },
-});
 
 export default TestScreen;
