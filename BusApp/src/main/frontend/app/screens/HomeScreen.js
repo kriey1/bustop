@@ -27,6 +27,10 @@ function HomeScreen({ navigation }) {
           <Text style={styles.touchText}>Touch!</Text>
         </TouchableOpacity>
       </View>
+            {/* GuHome으로 이동하는 버튼 */}
+            <TouchableOpacity style={styles.guHomeButton} onPress={() => navigation.navigate('Test')}>
+        <Text style={styles.guHomeButtonText}>Go to GuHome</Text>
+      </TouchableOpacity>
     </View>
   );
 }
