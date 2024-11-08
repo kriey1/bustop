@@ -20,11 +20,16 @@ function HomeScreen({ navigation }) {
 
       {/* 버스 이미지와 "Touch!" 텍스트 */}
       <View style={styles.touchContainer}>
-        <Image source={require('./bus.png')} style={styles.busImage} />
+        <Image source={require('../screens/image/bus.png')} style={styles.busImage} />
         
         {/* Touch 버튼을 눌렀을 때 MainScreen으로 이동 */}
         <TouchableOpacity onPress={() => navigation.navigate('Main')}>
           <Text style={styles.touchText}>Touch!</Text>
+        </TouchableOpacity>
+
+        {/* Touch 버튼을 눌렀을 때 MainScreen으로 이동 */}
+        <TouchableOpacity onPress={() => navigation.navigate('Test')}>
+          <Text style={styles.touchText}>test!</Text>
         </TouchableOpacity>
       </View>
     </View>
