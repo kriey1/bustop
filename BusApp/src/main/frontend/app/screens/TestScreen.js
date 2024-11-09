@@ -62,6 +62,7 @@ function TestScreen() {
           title="You are here"
         />
       </MapView>
+
     </View>
   );
 }
