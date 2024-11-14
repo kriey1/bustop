@@ -4,6 +4,7 @@ import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native';
 
 function HomeScreen({ navigation }) {
   return (
+<<<<<<< Updated upstream
     <View style={styles.container}>
       {/* 상단 문구 */}
       <Text style={styles.questionText}>운전자 or 보호자이신가요?</Text>
