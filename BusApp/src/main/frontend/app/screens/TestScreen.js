@@ -27,16 +27,19 @@ function TestScreen() {
   const fetchNearbyBusStops = async () => {
     if (!location) return;
     try {
-      const url = `http://10.20.36.139:8080/getNearbyBusStops?gpsLati=${location.latitude}&gpsLong=${location.longitude}`;
-      http://localhost:8080/getNearbyBusStops?gpsLati=36.799402&gpsLong=127.074885
-      console.log("API URL:", url); // API URL을 콘솔에 출력
+      // 위도와 경도를 고정된 소수점 자릿수로 포맷팅
+      const formattedLat = location.latitude.toFixed(6);
+      const formattedLong = location.longitude.toFixed(6);
+      
+      const url = `http://192.168.0.17:8080/getNearbyBusStops`;
+      console.log("API 요청 좌표:", formattedLat, formattedLong);
       
       const response = await axios.get(url, {
         params: {
-          gpsLati: location.latitude,
-          gpsLong: location.longitude,
-          pageNo: "1",
-          numOfRows: "10"
+          gpsLati: formattedLat,
+          gpsLong: formattedLong,
+          pageNo: 1,  // 문자열에서 숫자로 변경
+          numOfRows: 10  // 문자열에서 숫자로 변경
         }
       });
 
@@ -44,11 +47,11 @@ function TestScreen() {
       if (data && data.response && data.response.body && data.response.body.items) {
         setBusStops(data.response.body.items.item || []);
       } else {
-        console.error("Unexpected response format:", data);
+        console.error("응답 형식 오류:", data);
         setBusStops([]);
       }
     } catch (error) {
-      console.error("Error fetching bus stops:", error);
+      console.error("버스 정류장 조회 오류:", error);
     }
   };
 
