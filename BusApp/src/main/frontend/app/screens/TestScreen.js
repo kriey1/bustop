@@ -1,14 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Text, TextInput, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, Text, TouchableOpacity, ScrollView } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 import * as Location from 'expo-location';
 import axios from 'axios';
 
-function TestScreen({ navigation }) {
+function TestScreen() {
   const [location, setLocation] = useState(null);
   const [errorMsg, setErrorMsg] = useState(null);
-  const [searchText, setSearchText] = useState(''); // 검색 입력 상태
-  const [destinationCoords, setDestinationCoords] = useState(null); // 도착지 좌표
+  const [busStops, setBusStops] = useState([]);
 
   useEffect(() => {
     (async () => {
@@ -18,48 +17,56 @@ function TestScreen({ navigation }) {
         return;
       }
 
-      // 현재 위치 가져오기
       let loc = await Location.getCurrentPositionAsync({});
       setLocation(loc.coords);
     })();
   }, []);
 
-  // 목적지 검색 함수
-  const searchDestination = async () => {
-    const apiKey = '2E98KPZpX52m9sP7J4ES574buetOtyM38Kzwap9K';
-
+  // API를 통해 근처 버스 정류장 정보를 가져오는 함수
+  const fetchNearbyBusStops = async () => {
+    if (!location) return;
     try {
       const response = await axios.get(
-        `https://apis.openapi.sk.com/tmap/pois`,
+        `http://192.168.35.1:8080/getNearbyBusStops`,
         {
           params: {
-            version: 1,
-            searchKeyword: searchText,
-            resCoordType: 'WGS84GEO',
-            searchType: 'all',
-            appKey: apiKey,
-          },
+            gpsLati: location.latitude,
+            gpsLong: location.longitude,
+            pageNo: "1",
+            numOfRows: "10",
+            _type: "json" // JSON 응답 강제 요청
+          }
         }
       );
-
-      const pois = response.data?.searchPoiInfo?.pois?.poi;
-      if (pois && pois.length > 0) {
-        const destinationPoi = pois[0];
-        setDestinationCoords({
-          x: destinationPoi.frontLon,
-          y: destinationPoi.frontLat,
-          name: destinationPoi.name,
+  
+      // 응답이 HTML인지 JSON인지 확인
+      if (typeof response.data === "string" && response.data.includes("<html>")) {
+        console.error("Unexpected HTML response. Check API key or request parameters.");
+        setBusStops([]); // 오류 발생 시 빈 배열로 설정
+        return;
+      }
+  
+      // JSON 응답이 올바른지 확인 후 데이터 설정
+      const data = response.data;
+      if (data && data.response && data.response.body && data.response.body.items) {
+        const items = data.response.body.items.item || [];
+        setBusStops(items);
+  
+        // nodenm 값을 콘솔에 출력
+        items.forEach((stop) => {
+          console.log("정류장 이름 (nodenm):", stop.nodenm);
         });
-
-        // TestFindDestinationScreen으로 이동
-        navigation.navigate('TestFindDestination', { coords: destinationPoi });
       } else {
-        console.log("검색 결과가 없습니다.");
+        console.error("Unexpected response format:", data);
+        setBusStops([]);
       }
     } catch (error) {
-      console.error('Error searching destination:', error);
+      console.error("Error fetching bus stops:", error);
     }
   };
+  
+  
+  
 
   if (errorMsg) {
     return (
@@ -89,7 +96,6 @@ function TestScreen({ navigation }) {
         }}
         showsUserLocation={true}
       >
-        {/* 현재 위치 마커 */}
         <Marker
           coordinate={{
             latitude: location.latitude,
@@ -98,41 +104,32 @@ function TestScreen({ navigation }) {
           title="현재 위치"
         />
 
-        {/* 목적지 마커 */}
-        {destinationCoords && (
+        {busStops.map((stop, index) => (
           <Marker
+            key={index}
             coordinate={{
-              latitude: parseFloat(destinationCoords.y),
-              longitude: parseFloat(destinationCoords.x),
+              latitude: parseFloat(stop.gpslati),
+              longitude: parseFloat(stop.gpslong),
             }}
-            title={destinationCoords.name}
+            title={stop.nodenm}
           />
-        )}
+        ))}
       </MapView>
 
-      {/* 검색 입력과 버튼 */}
-      <View style={styles.searchContainer}>
-        <TextInput
-          style={styles.input}
-          placeholder="목적지 검색"
-          value={searchText}
-          onChangeText={setSearchText}
-        />
-        <TouchableOpacity style={styles.searchButton} onPress={() => navigation.navigate('TestFindDestination')}>
-          <Text style={styles.searchButtonText}>검색</Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => navigation.navigate('TestFindDestination')}>
-          <Text style={styles.touchText}>목적지 검색</Text>
-        </TouchableOpacity>
-      </View>
+      <TouchableOpacity style={styles.fetchButton} onPress={fetchNearbyBusStops}>
+        <Text style={styles.fetchButtonText}>주변 버스 정류장 검색</Text>
+      </TouchableOpacity>
 
-      {/* 도착지 좌표 표시 */}
-      {destinationCoords && (
-        <View style={styles.coordsContainer}>
-          <Text>도착지 이름: {destinationCoords.name}</Text>
-          <Text>경도 (x): {destinationCoords.x}</Text>
-          <Text>위도 (y): {destinationCoords.y}</Text>
-        </View>
+      {busStops.length > 0 && (
+        <ScrollView style={styles.busStopsList}>
+          {busStops.map((stop, index) => (
+            <View key={index} style={styles.busStopItem}>
+              <Text>정류장 이름: {stop.nodenm}</Text>
+              <Text>위도: {stop.gpslati}</Text>
+              <Text>경도: {stop.gpslong}</Text>
+            </View>
+          ))}
+        </ScrollView>
       )}
     </View>
   );
@@ -146,41 +143,32 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  searchContainer: {
+  fetchButton: {
     position: 'absolute',
-    top: 10,
-    width: '90%',
-    flexDirection: 'row',
-    backgroundColor: 'white',
-    borderRadius: 5,
-    padding: 5,
-    marginHorizontal: '5%',
-  },
-  input: {
-    flex: 1,
+    bottom: 100,
+    left: '5%',
+    right: '5%',
+    backgroundColor: '#4CAF50',
     padding: 10,
-    borderColor: '#ccc',
-    borderWidth: 1,
     borderRadius: 5,
+    alignItems: 'center',
   },
-  searchButton: {
-    paddingVertical: 10,
-    paddingHorizontal: 15,
-    backgroundColor: '#2196F3',
-    borderRadius: 5,
-  },
-  searchButtonText: {
+  fetchButtonText: {
     color: 'white',
     fontWeight: 'bold',
   },
-  coordsContainer: {
+  busStopsList: {
     position: 'absolute',
-    bottom: 20,
+    bottom: 10,
+    left: '5%',
+    right: '5%',
+    maxHeight: 150,
     backgroundColor: 'white',
     padding: 10,
     borderRadius: 5,
-    marginHorizontal: '5%',
-    alignItems: 'center',
+  },
+  busStopItem: {
+    marginBottom: 5,
   },
 });
 

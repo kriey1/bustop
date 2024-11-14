@@ -20,7 +20,7 @@ public class BusArrivalController {
     // 저상버스 노선의 정류소 도착예정정보
     @GetMapping("/getLowArrInfoByRoute")
     public String callGetLowArrInfoByRoute() throws IOException {
-        StringBuilder urlBuilder = new StringBuilder("http://ws.bus.go.kr/api/rest/arrive/getLowArrInfoByRoute");
+        StringBuilder urlBuilder = new StringBuilder("http://apis.data.go.kr/1613000/ArvlInfoInqireService/getSttnAcctoArvlPrearngeInfoList");
         urlBuilder.append("?" + URLEncoder.encode("serviceKey", "UTF-8") + "=" + SERVICE_KEY);
         urlBuilder.append("&" + URLEncoder.encode("stId", "UTF-8") + "=" + URLEncoder.encode("112000001", "UTF-8")); // 정류소 고유 ID
         urlBuilder.append("&" + URLEncoder.encode("busRouteId", "UTF-8") + "=" + URLEncoder.encode("100100118", "UTF-8")); // 노선 ID
