@@ -28,8 +28,8 @@ function HomeScreen({ navigation }) {
         </TouchableOpacity>
 
         {/* Touch 버튼을 눌렀을 때 MainScreen으로 이동 */}
-        <TouchableOpacity onPress={() => navigation.navigate('Test')}>
-          <Text style={styles.touchText}>test!</Text>
+        <TouchableOpacity onPress={() => navigation.navigate('Test2')}>
+          <Text style={styles.touchText}>test2!</Text>
         </TouchableOpacity>
       </View>
             {/* GuHome으로 이동하는 버튼 */}
