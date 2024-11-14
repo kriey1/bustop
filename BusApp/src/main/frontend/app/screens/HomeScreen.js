@@ -4,6 +4,7 @@ import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native';
 
 function HomeScreen({ navigation }) {
   return (
+<<<<<<< Updated upstream
     <View style={styles.container}>
       {/* 상단 문구 */}
       <Text style={styles.questionText}>운전자 or 보호자이신가요?</Text>
@@ -12,6 +13,20 @@ function HomeScreen({ navigation }) {
       <TouchableOpacity style={styles.loginButton} onPress={() => navigation.navigate('Login')}>
         <Text style={styles.loginButtonText}>로그인</Text>
       </TouchableOpacity>
+=======
+    <View>
+      <Text>Home Screen</Text>
+      <Text>운전자 혹은 보호자이신가요?</Text>
+      
+      <Button
+        title="회원가입" // 운전자 또는 보호자 선택페이지
+        onPress={() => navigation.navigate('SignupScreen')}
+      />
+      <Button
+        title="로그인"
+        onPress={() => navigation.navigate('Login')}
+      />
+>>>>>>> Stashed changes
 
       {/* 회원가입 버튼 */}
       <TouchableOpacity onPress={() => navigation.navigate('SignupScreen')}>
@@ -28,8 +43,8 @@ function HomeScreen({ navigation }) {
         </TouchableOpacity>
 
         {/* Touch 버튼을 눌렀을 때 MainScreen으로 이동 */}
-        <TouchableOpacity onPress={() => navigation.navigate('Test')}>
-          <Text style={styles.touchText}>test!</Text>
+        <TouchableOpacity onPress={() => navigation.navigate('Test2')}>
+          <Text style={styles.touchText}>test2!</Text>
         </TouchableOpacity>
       </View>
             {/* GuHome으로 이동하는 버튼 */}
