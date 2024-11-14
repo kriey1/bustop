@@ -12,6 +12,20 @@ function HomeScreen({ navigation }) {
       <TouchableOpacity style={styles.loginButton} onPress={() => navigation.navigate('Login')}>
         <Text style={styles.loginButtonText}>로그인</Text>
       </TouchableOpacity>
+=======
+    <View>
+      <Text>Home Screen</Text>
+      <Text>운전자 혹은 보호자이신가요?</Text>
+      
+      <Button
+        title="회원가입" // 운전자 또는 보호자 선택페이지
+        onPress={() => navigation.navigate('SignupScreen')}
+      />
+      <Button
+        title="로그인"
+        onPress={() => navigation.navigate('Login')}
+      />
+>>>>>>> Stashed changes
 
       {/* 회원가입 버튼 */}
       <TouchableOpacity onPress={() => navigation.navigate('SignupScreen')}>
