@@ -10,6 +10,7 @@ import SignupdrScreen from './screens/SingupdrScreen';
 import SignupgrScreen from './screens/SingupgrScreen';
 import DestinationSearchingScreen from './screens/navigation/DestinationSearchingScreen'
 import NavigateStartScreen from './screens/navigation/NavigateStartScreen'
+import TestFindDestinationScreen from './screens/TestFindDestinationScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -25,6 +26,7 @@ function StackNavigator() {
       <Stack.Screen name="SignupgrScreen" component={SignupgrScreen} />
       <Stack.Screen name="DestinationSearching" component={DestinationSearchingScreen}/>
       <Stack.Screen name="NavigateStart" component={NavigateStartScreen}/>
+      <Stack.Screen name="TestFindDestination" component={TestFindDestinationScreen}/>
     </Stack.Navigator>
   );
 }
