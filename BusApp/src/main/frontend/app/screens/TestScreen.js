@@ -23,6 +23,19 @@ function TestScreen() {
     })();
   }, []);
 
+  // 두 지점 사이의 거리를 계산하는 함수 추가
+  const calculateDistance = (lat1, lon1, lat2, lon2) => {
+    const R = 6371; // 지구의 반경 (km)
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+      Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+  };
+
   // API를 통해 근처 버스 정류장 정보를 가져오는 함수
   const fetchNearbyBusStops = async () => {
     if (!location) return;
@@ -31,7 +44,7 @@ function TestScreen() {
       const formattedLat = location.latitude.toFixed(6);
       const formattedLong = location.longitude.toFixed(6);
       
-      const url = `http://192.168.0.17:8080/getNearbyBusStops`;
+      const url = `http://192.168.0.47:8080/getNearbyBusStops`;
       console.log("API 요청 좌표:", formattedLat, formattedLong);
       
       const response = await axios.get(url, {
@@ -45,7 +58,22 @@ function TestScreen() {
 
       const data = response.data;
       if (data && data.response && data.response.body && data.response.body.items) {
-        setBusStops(data.response.body.items.item || []);
+        const items = data.response.body.items.item || [];
+        
+        // 각 정류장까지의 거리 계산
+        const stopsWithDistance = items.map(stop => ({
+          ...stop,
+          distance: calculateDistance(
+            location.latitude,
+            location.longitude,
+            parseFloat(stop.gpslati),
+            parseFloat(stop.gpslong)
+          )
+        }));
+
+        // 거리순으로 정렬하고 가장 가까운 정류장만 선택
+        const nearestStop = stopsWithDistance.sort((a, b) => a.distance - b.distance)[0];
+        setBusStops(nearestStop ? [nearestStop] : []);
       } else {
         console.error("응답 형식 오류:", data);
         setBusStops([]);
