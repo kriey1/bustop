@@ -19,6 +19,7 @@ function TestScreen() {
 
       let loc = await Location.getCurrentPositionAsync({});
       setLocation(loc.coords);
+      console.log("현재 위치:", loc.coords); // 현재 위치를 콘솔에 출력
     })();
   }, []);
 
@@ -26,36 +27,22 @@ function TestScreen() {
   const fetchNearbyBusStops = async () => {
     if (!location) return;
     try {
-      const response = await axios.get(
-        `http://192.168.35.1:8080/getNearbyBusStops`,
-        {
-          params: {
-            gpsLati: location.latitude,
-            gpsLong: location.longitude,
-            pageNo: "1",
-            numOfRows: "10",
-            _type: "json" // JSON 응답 강제 요청
-          }
+      const url = `http://10.20.36.139:8080/getNearbyBusStops?gpsLati=${location.latitude}&gpsLong=${location.longitude}`;
+      http://localhost:8080/getNearbyBusStops?gpsLati=36.799402&gpsLong=127.074885
+      console.log("API URL:", url); // API URL을 콘솔에 출력
+      
+      const response = await axios.get(url, {
+        params: {
+          gpsLati: location.latitude,
+          gpsLong: location.longitude,
+          pageNo: "1",
+          numOfRows: "10"
         }
-      );
-  
-      // 응답이 HTML인지 JSON인지 확인
-      if (typeof response.data === "string" && response.data.includes("<html>")) {
-        console.error("Unexpected HTML response. Check API key or request parameters.");
-        setBusStops([]); // 오류 발생 시 빈 배열로 설정
-        return;
-      }
-  
-      // JSON 응답이 올바른지 확인 후 데이터 설정
+      });
+
       const data = response.data;
       if (data && data.response && data.response.body && data.response.body.items) {
-        const items = data.response.body.items.item || [];
-        setBusStops(items);
-  
-        // nodenm 값을 콘솔에 출력
-        items.forEach((stop) => {
-          console.log("정류장 이름 (nodenm):", stop.nodenm);
-        });
+        setBusStops(data.response.body.items.item || []);
       } else {
         console.error("Unexpected response format:", data);
         setBusStops([]);
@@ -64,9 +51,6 @@ function TestScreen() {
       console.error("Error fetching bus stops:", error);
     }
   };
-  
-  
-  
 
   if (errorMsg) {
     return (

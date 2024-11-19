@@ -4,7 +4,6 @@ import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native';
 
 function HomeScreen({ navigation }) {
   return (
-
     <View style={styles.container}>
       {/* 상단 문구 */}
       <Text style={styles.questionText}>운전자 or 보호자이신가요?</Text>
@@ -14,7 +13,6 @@ function HomeScreen({ navigation }) {
         <Text style={styles.loginButtonText}>로그인</Text>
       </TouchableOpacity>
 
-
       {/* 회원가입 버튼 */}
       <TouchableOpacity onPress={() => navigation.navigate('SignupScreen')}>
         <Text style={styles.signupText}>회원가입</Text>
@@ -23,24 +21,17 @@ function HomeScreen({ navigation }) {
       {/* 버스 이미지와 "Touch!" 텍스트 */}
       <View style={styles.touchContainer}>
         <Image source={require('../screens/image/bus.png')} style={styles.busImage} />
-
+        
         {/* Touch 버튼을 눌렀을 때 MainScreen으로 이동 */}
         <TouchableOpacity onPress={() => navigation.navigate('Main')}>
           <Text style={styles.touchText}>Touch!</Text>
         </TouchableOpacity>
+
         {/* Touch 버튼을 눌렀을 때 MainScreen으로 이동 */}
         <TouchableOpacity onPress={() => navigation.navigate('Test')}>
           <Text style={styles.touchText}>test!</Text>
         </TouchableOpacity>
-        {/* Touch 버튼을 눌렀을 때 MainScreen으로 이동 */}
-        <TouchableOpacity onPress={() => navigation.navigate('Test2')}>
-          <Text style={styles.touchText}>test2!</Text>
-        </TouchableOpacity>
       </View>
-      {/* GuHome으로 이동하는 버튼 */}
-      <TouchableOpacity style={styles.guHomeButton} onPress={() => navigation.navigate('Test')}>
-        <Text style={styles.guHomeButtonText}>Go to GuHome</Text>
-      </TouchableOpacity>
     </View>
   );
 }
