@@ -44,7 +44,7 @@ function TestScreen() {
       const formattedLat = location.latitude.toFixed(6);
       const formattedLong = location.longitude.toFixed(6);
       
-      const url = `http://192.168.0.47:8080/getNearbyBusStops`;
+      const url = `http://10.20.37.42:8080/getNearbyBusStops`;
       console.log("API 요청 좌표:", formattedLat, formattedLong);
       
       const response = await axios.get(url, {
