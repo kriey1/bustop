@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Modal } from 'react-native';
 
 function SignupgrScreen({ navigation }) {
     const [id, setId] = useState('');
@@ -7,14 +7,16 @@ function SignupgrScreen({ navigation }) {
     const [name, setName] = useState('');
     const [number, setNumber] = useState('');
     const [kin, setKin] = useState('');
+    const [error, setError] = useState('');
+    const [modalVisible, setModalVisible] = useState(false);
 
     const handleSignup = async () => {
         if (!id || !password || !name || !number || !kin) {
-            Alert.alert('오류', '모든 항목을 채워주세요.');
+            setError('모든 항목을 입력해주세요.');
+            setModalVisible(true);
             return;
         }
         try {
-            console.log({ id, password, name, number, kin });
             const response = await fetch('http://172.30.1.60:3000/signup-nok', {
                 method: 'POST',
                 headers: {
@@ -24,20 +26,47 @@ function SignupgrScreen({ navigation }) {
             });
             const result = await response.json();
             if (response.ok) {
-                Alert.alert('회원가입 성공', '보호자 등록이 완료되었습니다.');
+                setError('회원가입이 완료되었습니다.');
+                setModalVisible(true);
                 navigation.navigate('Home');
+            } else if (response.status === 409) {
+                setError('이미 존재하는 ID입니다. 다른 ID를 사용해주세요.');
+                setModalVisible(true);
             } else {
-                Alert.alert('오류', result.message || '보호자 등록에 실패했습니다.');
+                setError('보호자 등록에 실패했습니다.');
+                setModalVisible(true);
             }
         } catch (error) {
             console.error('보호자 회원가입 오류:', error);
-            Alert.alert('오류', '서버 연결 실패');
+            setError('서버 연결 실패');
+            setModalVisible(true);
         }
     };
 
 
     return (
         <View style={styles.container}>
+
+            {/* 알림 창 */}
+            <Modal
+                transparent={true}
+                visible={modalVisible}
+                animationType="fade"
+                onRequestClose={() => setModalVisible(false)}
+            >
+                <View style={styles.modalContainer}>
+                    <View style={styles.modalContent}>
+                        <Text style={styles.errorMessage}>{error}</Text>
+                        <TouchableOpacity
+                            style={styles.closeButton}
+                            onPress={() => setModalVisible(false)}
+                        >
+                            <Text style={styles.closeButtonText}>닫기</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
+
             <Text style={styles.title}>보호자</Text>
             <TextInput
                 style={styles.input}
@@ -108,5 +137,40 @@ const styles = StyleSheet.create({
     buttonText: {
         fontSize: 16,
         color: '#333',
+    },
+    
+    modalContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    },
+    modalContent: {
+        backgroundColor: '#fff',
+        padding: 20,
+        borderRadius: 10,
+        alignItems: 'center',
+        width: 300,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+        elevation: 5,
+    },
+    errorMessage: {
+        fontSize: 16,
+        color: '#333',
+        marginBottom: 20,
+        textAlign: 'center',
+    },
+    closeButton: {
+        backgroundColor: '#F3C623',
+        paddingVertical: 10,
+        paddingHorizontal: 30,
+        borderRadius: 5,
+    },
+    closeButtonText: {
+        fontSize: 14,
+        color: '#fff',
     },
 });
