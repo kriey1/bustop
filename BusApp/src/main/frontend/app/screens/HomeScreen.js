@@ -1,8 +1,22 @@
 // src/main/frontend/app/screens/HomeScreen.js
 import React from 'react';
 import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native';
+import FingerprintScanner from 'react-native-fingerprint-scanner'; // 패키지 변경
+import Sensor from '../components/Sensor';
 
 function HomeScreen({ navigation }) {
+  const handleFaceIDAuthentication = async () => {
+    try {
+      await FingerprintScanner.authenticate({ description: '얼굴 인식을 진행합니다.' });
+      alert('얼굴 인식이 완료되었습니다.');
+      navigation.navigate('Main');
+    } catch (error) {
+      alert('Face ID 인증에 실패했습니다.');
+    } finally {
+      FingerprintScanner.release();
+    }
+  };
+
   return (
     <View style={styles.container}>
       {/* 상단 문구 */}
@@ -22,12 +36,12 @@ function HomeScreen({ navigation }) {
       <View style={styles.touchContainer}>
         <Image source={require('../screens/image/bus.png')} style={styles.busImage} />
         
-        {/* Touch 버튼을 눌렀을 때 MainScreen으로 이동 */}
-        <TouchableOpacity onPress={() => navigation.navigate('Main')}>
+        {/* Face ID 인증 후 MainScreen으로 이동 */}
+        <TouchableOpacity onPress={handleFaceIDAuthentication}>
           <Text style={styles.touchText}>Touch!</Text>
         </TouchableOpacity>
 
-        {/* Touch 버튼을 눌렀을 때 MainScreen으로 이동 */}
+        {/* Touch 버튼을 눌렀을 때 TestScreen으로 이동 */}
         <TouchableOpacity onPress={() => navigation.navigate('Test')}>
           <Text style={styles.touchText}>test!</Text>
         </TouchableOpacity>
