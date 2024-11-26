@@ -3,10 +3,12 @@ import { View, StyleSheet, Text, TouchableOpacity, ScrollView } from 'react-nati
 import MapView, { Marker } from 'react-native-maps';
 import * as Location from 'expo-location';
 import axios from 'axios';
+import axios from 'axios';
 
 function TestScreen() {
   const [location, setLocation] = useState(null);
   const [errorMsg, setErrorMsg] = useState(null);
+  const [busStops, setBusStops] = useState([]);
   const [busStops, setBusStops] = useState([]);
 
   useEffect(() => {
@@ -20,35 +22,67 @@ function TestScreen() {
       let loc = await Location.getCurrentPositionAsync({});
       setLocation(loc.coords);
       console.log("현재 위치:", loc.coords); // 현재 위치를 콘솔에 출력
+      console.log("현재 위치:", loc.coords); // 현재 위치를 콘솔에 출력
     })();
   }, []);
+
+  // 두 지점 사이의 거리를 계산하는 함수 추가
+  const calculateDistance = (lat1, lon1, lat2, lon2) => {
+    const R = 6371; // 지구의 반경 (km)
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+      Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+  };
 
   // API를 통해 근처 버스 정류장 정보를 가져오는 함수
   const fetchNearbyBusStops = async () => {
     if (!location) return;
     try {
-      const url = `http://10.20.36.139:8080/getNearbyBusStops?gpsLati=${location.latitude}&gpsLong=${location.longitude}`;
-      http://localhost:8080/getNearbyBusStops?gpsLati=36.799402&gpsLong=127.074885
-      console.log("API URL:", url); // API URL을 콘솔에 출력
+      // 위도와 경도를 고정된 소수점 자릿수로 포맷팅
+      const formattedLat = location.latitude.toFixed(6);
+      const formattedLong = location.longitude.toFixed(6);
+      
+      const url = `http://10.20.36.73:8080/getNearbyBusStops`;
+      console.log("API 요청 좌표:", formattedLat, formattedLong);
       
       const response = await axios.get(url, {
         params: {
-          gpsLati: location.latitude,
-          gpsLong: location.longitude,
-          pageNo: "1",
-          numOfRows: "10"
+          gpsLati: formattedLat,
+          gpsLong: formattedLong,
+          pageNo: 1,  // 문자열에서 숫자로 변경
+          numOfRows: 10  // 문자열에서 숫자로 변경
         }
       });
 
       const data = response.data;
       if (data && data.response && data.response.body && data.response.body.items) {
-        setBusStops(data.response.body.items.item || []);
+        const items = data.response.body.items.item || [];
+        
+        // 각 정류장까지의 거리 계산
+        const stopsWithDistance = items.map(stop => ({
+          ...stop,
+          distance: calculateDistance(
+            location.latitude,
+            location.longitude,
+            parseFloat(stop.gpslati),
+            parseFloat(stop.gpslong)
+          )
+        }));
+
+        // 거리순으로 정렬하고 가장 가까운 정류장만 선택
+        const nearestStop = stopsWithDistance.sort((a, b) => a.distance - b.distance)[0];
+        setBusStops(nearestStop ? [nearestStop] : []);
       } else {
-        console.error("Unexpected response format:", data);
+        console.error("응답 형식 오류:", data);
         setBusStops([]);
       }
     } catch (error) {
-      console.error("Error fetching bus stops:", error);
+      console.error("버스 정류장 조회 오류:", error);
     }
   };
 

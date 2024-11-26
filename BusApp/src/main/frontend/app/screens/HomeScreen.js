@@ -1,6 +1,8 @@
 // src/main/frontend/app/screens/HomeScreen.js
 import React from 'react';
 import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native';
+import FingerprintScanner from 'react-native-fingerprint-scanner'; // 패키지 변경
+import Sensor from '../components/Sensor';
 
 function HomeScreen({ navigation }) {
   return (
@@ -22,8 +24,8 @@ function HomeScreen({ navigation }) {
       <View style={styles.touchContainer}>
         <Image source={require('../screens/image/bus.png')} style={styles.busImage} />
         
-        {/* Touch 버튼을 눌렀을 때 MainScreen으로 이동 */}
-        <TouchableOpacity onPress={() => navigation.navigate('Main')}>
+        {/* Face ID 인증 후 MainScreen으로 이동 */}
+        <TouchableOpacity onPress={handleFaceIDAuthentication}>
           <Text style={styles.touchText}>Touch!</Text>
         </TouchableOpacity>
 

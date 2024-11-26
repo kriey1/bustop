@@ -2,10 +2,10 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 
-function MainPage() {
+function MainPage({ nearestStation }) {
   // 각 단계에 표시할 메시지와 선택지를 정의
   const messages = [
-    { text: "가까운 정류장을 안내합니다.", options: ["선문대 본관 앞 정류장", "선문대 정류소"], useTap: true },
+    { text: "가까운 정류장을 안내합니다.", options: [nearestStation], useTap: true },
     { text: "도착지를 말씀해주세요.", options: ["아산역 1호선"], useTap: true },
     { text: "출발지에서 도착지까지 가는 버스는 순환5입니다.\n안내를 시작할까요?", options: ["맞다면 한번 탭\n아니라면 두번 탭"], useTap: false },
     { text: "순환5번 버스가 잠시후 도착합니다.", options: [], useTap: false },
