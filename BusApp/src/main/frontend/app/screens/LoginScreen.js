@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Modal } from 'react-native';
-//import UserContext from '../UserContext';
 
 
 function LoginScreen({ navigation }) {
