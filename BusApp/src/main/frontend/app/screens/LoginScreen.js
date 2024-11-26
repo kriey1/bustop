@@ -1,7 +1,11 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Modal } from 'react-native';
+//import UserContext from '../UserContext';
+
 
 function LoginScreen({ navigation }) {
+    //const context = useContext(UserContext);
+    //const { setUserInfo } = context;
     const [id, setId] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
@@ -15,7 +19,7 @@ function LoginScreen({ navigation }) {
         }
 
         try {
-            const response = await fetch('http://172.30.1.60:3000/login', {
+            const response = await fetch('http://221.168.128.40:3000/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id, password }),
@@ -30,7 +34,7 @@ function LoginScreen({ navigation }) {
                 } else if (result.role === 'nok') {
                     navigation.navigate('Main');
                 } else {
-                    navigation.navigate('Main');
+                    navigation.navigate('BusDriverScreen');
                 }
             } else {
                 setError(result.message || '로그인 실패');

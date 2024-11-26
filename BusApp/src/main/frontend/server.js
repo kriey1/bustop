@@ -4,7 +4,7 @@ const mariadb = require('mariadb');
 
 const app = express();
 const PORT = 3000;
-const IP_ADDRESS = '172.30.1.60';
+const IP_ADDRESS = '221.168.128.40';
 
 app.use(cors());
 app.use(express.json());
@@ -149,8 +149,6 @@ app.post('/login', async (req, res) => {
       if (conn) conn.release();
   }
 });
-
-
 
 // 서버 실행
 app.listen(PORT, '0.0.0.0', () => {
