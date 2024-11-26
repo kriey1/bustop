@@ -1,14 +1,22 @@
 {
   "expo": {
     "scheme": "acme",
+    "newArchEnabled": true,
     "web": {
       "bundler": "metro"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      "expo-audio"
     ],
     "name": "frontend",
     "slug": "frontend",
-    "jsEngine": "jsc"
+    "jsEngine": "jsc",
+    "android": {
+      "package": "com.mycompany.busapp"
+    },
+    "ios": {
+      "bundleIdentifier": "com.mycompany.busapp"
+    }
   }
 }
