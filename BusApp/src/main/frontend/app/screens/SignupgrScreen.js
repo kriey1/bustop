@@ -1,51 +1,48 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Modal } from 'react-native';
-//import UserContext from '../UserContext';
 
-
-function LoginScreen({ navigation }) {
-    //const context = useContext(UserContext);
-    //const { setUserInfo } = context;
+function SignupgrScreen({ navigation }) {
     const [id, setId] = useState('');
     const [password, setPassword] = useState('');
+    const [name, setName] = useState('');
+    const [number, setNumber] = useState('');
+    const [kin, setKin] = useState('');
     const [error, setError] = useState('');
     const [modalVisible, setModalVisible] = useState(false);
 
-    const handleLogin = async () => {
-        if (!id || !password) {
-            setError('ID와 비밀번호를 입력해주세요.');
+    const handleSignup = async () => {
+        if (!id || !password || !name || !number || !kin) {
+            setError('모든 항목을 입력해주세요.');
             setModalVisible(true);
             return;
         }
-
         try {
-            const response = await fetch('http://221.168.128.40:3000/login', {
+            const response = await fetch('http://172.30.1.60:3000/signup-nok', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id, password }),
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ id, password, name, number, kin }),
             });
-            console.log('응답 상태:', response.status);
             const result = await response.json();
-            console.log('응답 데이터:', result);
-
             if (response.ok) {
-                if (result.role === 'user') {
-                    navigation.navigate('Main');
-                } else if (result.role === 'nok') {
-                    navigation.navigate('Main');
-                } else {
-                    navigation.navigate('BusDriverScreen');
-                }
+                setError('회원가입이 완료되었습니다.');
+                setModalVisible(true);
+                navigation.navigate('Home');
+            } else if (response.status === 409) {
+                setError('이미 존재하는 ID입니다. 다른 ID를 사용해주세요.');
+                setModalVisible(true);
             } else {
-                setError(result.message || '로그인 실패');
+                setError('보호자 등록에 실패했습니다.');
                 setModalVisible(true);
             }
         } catch (error) {
-            console.error('로그인 오류:', error);
-            setError('서버와 연결할 수 없습니다.');
+            console.error('보호자 회원가입 오류:', error);
+            setError('서버 연결 실패');
             setModalVisible(true);
         }
     };
+
 
     return (
         <View style={styles.container}>
@@ -70,63 +67,78 @@ function LoginScreen({ navigation }) {
                 </View>
             </Modal>
 
-
-            {/* 로그인 입력 박스 */}
-            <View style={styles.loginBox}>
-                <TextInput
-                    style={styles.input}
-                    placeholder="id"
-                    value={id}
-                    onChangeText={setId}
-                />
-                <TextInput
-                    style={styles.input}
-                    placeholder="pw"
-                    value={password}
-                    onChangeText={setPassword}
-                    secureTextEntry
-                />
-                <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
-                    <Text style={styles.loginButtonText}>login</Text>
-                </TouchableOpacity>
-            </View>
+            <Text style={styles.title}>보호자</Text>
+            <TextInput
+                style={styles.input}
+                placeholder="ID"
+                value={id}
+                onChangeText={setId}
+            />
+            <TextInput
+                style={styles.input}
+                placeholder="PW"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+            />
+            <TextInput
+                style={styles.input}
+                placeholder="이름"
+                value={name}
+                onChangeText={setName}
+            />
+            <TextInput
+                style={styles.input}
+                placeholder="전화번호"
+                value={number}
+                onChangeText={setNumber}
+            />
+            <TextInput
+                style={styles.input}
+                placeholder="등록번호"
+                value={kin}
+                onChangeText={setKin}
+            />
+            <TouchableOpacity style={styles.button} onPress={handleSignup}>
+                <Text style={styles.buttonText}>완료</Text>
+            </TouchableOpacity>
         </View>
     );
 }
 
-export default LoginScreen;
+export default SignupgrScreen;
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#fff',
         justifyContent: 'center',
         alignItems: 'center',
+        backgroundColor: '#D9D9D9',
+        paddingHorizontal: 20,
     },
-    loginBox: {
-        backgroundColor: '#F3C623',
-        padding: 20,
-        borderRadius: 10,
+    title: {
+        fontSize: 18,
+        marginBottom: 20,
     },
     input: {
         backgroundColor: '#f8f9fa',
         padding: 10,
-        marginVertical: 5,
         borderRadius: 5,
-        width: 200,
+        marginBottom: 10,
+        width: 250,
     },
-    loginButton: {
-        backgroundColor: '#fff',
+    button: {
+        backgroundColor: '#f8f9fa',
         paddingVertical: 10,
         paddingHorizontal: 40,
         borderRadius: 5,
-        marginTop: 10,
+        marginTop: 20,
     },
-    loginButtonText: {
+    buttonText: {
         fontSize: 16,
         color: '#333',
-        textAlign: 'center',
     },
+    
     modalContainer: {
         flex: 1,
         justifyContent: 'center',

@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { View, Button, TextInput, Text, Alert, FlatList, TouchableOpacity } from 'react-native';
 import * as Location from 'expo-location';
-import { Speech } from 'expo-speech';
 
 const DestinationSearchingScreen = () => {
   const [destination, setDestination] = useState('');

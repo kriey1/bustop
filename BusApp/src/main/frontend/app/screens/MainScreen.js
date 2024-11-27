@@ -1,8 +1,10 @@
 // src/main/frontend/app/screens/MainPage.js
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 
-function MainPage({ nearestStation }) {
+function MainScreen({ nearestStation }) {
   // 각 단계에 표시할 메시지와 선택지를 정의
   const messages = [
     { text: "가까운 정류장을 안내합니다.", options: [nearestStation], useTap: true },
@@ -82,4 +84,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default MainPage;
+export default MainScreen;
