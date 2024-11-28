@@ -16,7 +16,7 @@ function SignupdrScreen({ navigation }) {
             return;
         }
         try {
-            const response = await fetch('http://172.30.1.60:3000/signup-driver', {
+            const response = await fetch('http://221.168.128.40:3000/signup-driver', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

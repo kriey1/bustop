@@ -32,7 +32,7 @@ const DestinationSearchingScreen = () => {
 //테스트용 수동검색
   const TextSearching = async (destination) => {
     try {
-        const response = await fetch(`http://172.30.1.60:3000/search?destination=${destination}`);
+        const response = await fetch(`http://221.168.128.40:3000/search?destination=${destination}`);
         const results = await response.json();
         return results;
       } catch (error) {
