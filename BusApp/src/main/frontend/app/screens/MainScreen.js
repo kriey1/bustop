@@ -1,8 +1,6 @@
 // src/main/frontend/app/screens/MainPage.js
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 
 function MainScreen({ nearestStation }) {
   // 각 단계에 표시할 메시지와 선택지를 정의
