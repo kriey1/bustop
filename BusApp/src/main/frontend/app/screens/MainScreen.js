@@ -5,6 +5,9 @@ import * as FileSystem from 'expo-file-system'; // 파일 시스템
 import * as Speech from 'expo-speech'; // TTS
 import axios from 'axios'; // HTTP 요청
 
+function MainScreen({ nearestStation }) {
+  // 각 단계에 표시할 메시지와 선택지를 정의
+
 const GOOGLE_CLOUD_API_KEY = "AIzaSyD6lQ6JOwarbfY6KvERXsVXxdOpXRHqeh0"; // Google Cloud API 키 입력
 
 export default function MainPage({ nearestStation }) {
@@ -13,7 +16,7 @@ export default function MainPage({ nearestStation }) {
   const [currentStep, setCurrentStep] = useState(0); // 메시지 순서
   const [isListening, setIsListening] = useState(false); // 음성 인식 상태
 
-  // 메시지 리스트
+
   const messages = [
     { text: "가까운 정류장을 안내합니다.", options: [nearestStation], useTap: true },
     { text: "도착지를 말씀해주세요.", options: ["아산역 1호선"], useTap: false }, // 음성 인식 활성화 단계
@@ -198,3 +201,6 @@ const styles = StyleSheet.create({
     color: '#FFF',
   },
 });
+
+export default MainScreen;
+
