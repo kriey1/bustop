@@ -4,19 +4,89 @@ import { Audio } from 'expo-av'; // 오디오 녹음
 import * as FileSystem from 'expo-file-system'; // 파일 시스템
 import * as Speech from 'expo-speech'; // TTS
 import axios from 'axios'; // HTTP 요청
-
-function MainScreen({ nearestStation }) {
-  // 각 단계에 표시할 메시지와 선택지를 정의
+import useUserStore from '../store/userStore'; //유저정보
+import * as Location from 'expo-location'; //위치정보
 
 const GOOGLE_CLOUD_API_KEY = "AIzaSyD6lQ6JOwarbfY6KvERXsVXxdOpXRHqeh0"; // Google Cloud API 키 입력
 
-export default function MainPage({ nearestStation }) {
+function MainScreen({ nearestStation }) {
   const [recording, setRecording] = useState(); // 녹음 객체
   const [recognizedText, setRecognizedText] = useState(''); // 변환된 텍스트
   const [currentStep, setCurrentStep] = useState(0); // 메시지 순서
   const [isListening, setIsListening] = useState(false); // 음성 인식 상태
+  const { userInfo, registration } = useUserStore();
+  const vehicleno = "대전75자2337"; // 임시 버스 번호
+  const [departure, setDeparture] = useState('천마사');
+  const [destination, setDestination] = useState('가수원네거리');
+  
 
+  // WebSocket 및 GPS 데이터 전송
+  useEffect(() => {
+    const ws = new WebSocket('ws://221.168.128.40:3000'); // WebSocket 서버 주소
 
+    ws.onopen = () => {
+      console.log('WebSocket 연결 성공');
+
+      const sendGPSData = async () => {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') {
+          console.error('위치 권한이 거부되었습니다.');
+          return;
+        }
+
+        const location = await Location.getCurrentPositionAsync({});
+        const data = {
+          type: 'gps-update',
+          departure,
+          destination,
+          registration: userInfo?.registration,
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+        };
+        ws.send(JSON.stringify(data)); // 서버로 GPS 데이터 전송
+        console.log('GPS 데이터 전송:', data);
+      };
+
+      // 5초마다 GPS 데이터를 서버로 전송
+      const interval = setInterval(sendGPSData, 5000);
+
+      return () => clearInterval(interval); // 컴포넌트 언마운트 시 인터벌 정리
+    };
+
+    ws.onclose = () => {
+      console.log('WebSocket 연결 종료');
+    };
+
+    return () => {
+      if (ws) ws.close();
+    };
+  }, [registration]);
+
+ // 하차벨 활성화 메시지 전송
+ const activateBusBell = () => {
+  const ws = new WebSocket('ws://221.168.128.40:3000'); // WebSocket 서버 주소
+
+  ws.onopen = () => {
+    const data = {
+      type: 'activate-bell',
+      vehicleno, // 버스 번호
+      destination,
+    };
+    ws.send(JSON.stringify(data));
+    console.log('하차벨 활성화 메시지 전송:', data);
+    ws.close();
+  };
+
+  ws.onerror = (error) => {
+    console.error('WebSocket 에러:', error);
+  };
+
+  ws.onclose = () => {
+    console.log('WebSocket 닫힘');
+  };
+};
+
+  // 메시지 리스트
   const messages = [
     { text: "가까운 정류장을 안내합니다.", options: [nearestStation], useTap: true },
     { text: "도착지를 말씀해주세요.", options: ["아산역 1호선"], useTap: false }, // 음성 인식 활성화 단계
@@ -146,14 +216,21 @@ export default function MainPage({ nearestStation }) {
       )}
 
       <TouchableOpacity
-        style={styles.touchButton}
-        onPress={nextStep}
-        disabled={currentStep === messages.length - 1} // 마지막 단계에서는 비활성화
-      >
-        <Text style={styles.touchButtonText}>
-          {currentStep === messages.length - 1 ? "완료" : "Touch!"}
-        </Text>
-      </TouchableOpacity>
+    style={styles.touchButton}
+    onPress={() => {
+        if (currentStep === messages.length - 1) {
+            // 완료 단계일 때 실행할 작업
+            console.log("완료 버튼 클릭");
+            activateBusBell(); // 하차벨 활성화
+        } else {
+            nextStep(); // 다음 단계로 이동
+        }
+    }}
+>
+    <Text style={styles.touchButtonText}>
+        {currentStep === messages.length - 1 ? "완료" : "Touch!"}
+    </Text>
+</TouchableOpacity>
     </View>
   );
 }
@@ -203,4 +280,3 @@ const styles = StyleSheet.create({
 });
 
 export default MainScreen;
-

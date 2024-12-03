@@ -1,15 +1,14 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Modal } from 'react-native';
-//import UserContext from '../UserContext';
+import React, { useState,useContext } from 'react';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Modal } from 'react-native';
+import useUserStore from '../store/userStore';
 
 
 function LoginScreen({ navigation }) {
-    //const context = useContext(UserContext);
-    //const { setUserInfo } = context;
     const [id, setId] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [modalVisible, setModalVisible] = useState(false);
+    const { setUserInfo } = useUserStore();
 
     const handleLogin = async () => {
         if (!id || !password) {
@@ -27,16 +26,22 @@ function LoginScreen({ navigation }) {
             console.log('응답 상태:', response.status);
             const result = await response.json();
             console.log('응답 데이터:', result);
-
+            
             if (response.ok) {
+
+                const{role, user} = result;
+                console.log('서버에서 받은 유저 데이터:', result);
+                setUserInfo(result.user);
+
                 if (result.role === 'user') {
                     navigation.navigate('Main');
                 } else if (result.role === 'nok') {
-                    navigation.navigate('Main');
+                    navigation.navigate('NokScreen');
                 } else {
                     navigation.navigate('BusDriverScreen');
                 }
             } else {
+                
                 setError(result.message || '로그인 실패');
                 setModalVisible(true);
             }
