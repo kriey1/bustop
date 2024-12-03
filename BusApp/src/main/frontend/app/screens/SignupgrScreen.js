@@ -1,17 +1,17 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Modal } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Modal } from 'react-native';
 
 function SignupgrScreen({ navigation }) {
     const [id, setId] = useState('');
     const [password, setPassword] = useState('');
     const [name, setName] = useState('');
     const [number, setNumber] = useState('');
-    const [kin, setKin] = useState('');
+    const [registration, setRegistration] = useState('');
     const [error, setError] = useState('');
     const [modalVisible, setModalVisible] = useState(false);
 
     const handleSignup = async () => {
-        if (!id || !password || !name || !number || !kin) {
+        if (!id || !password || !name || !number || !registration) {
             setError('모든 항목을 입력해주세요.');
             setModalVisible(true);
             return;
@@ -22,7 +22,7 @@ function SignupgrScreen({ navigation }) {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ id, password, name, number, kin }),
+                body: JSON.stringify({ id, password, name, number, registration }),
             });
             const result = await response.json();
             if (response.ok) {
@@ -96,8 +96,8 @@ function SignupgrScreen({ navigation }) {
             <TextInput
                 style={styles.input}
                 placeholder="등록번호"
-                value={kin}
-                onChangeText={setKin}
+                value={registration}
+                onChangeText={setRegistration}
             />
             <TouchableOpacity style={styles.button} onPress={handleSignup}>
                 <Text style={styles.buttonText}>완료</Text>

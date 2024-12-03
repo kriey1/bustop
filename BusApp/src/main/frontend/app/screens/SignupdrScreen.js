@@ -1,18 +1,62 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Modal } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Modal, FlatList, ActivityIndicator } from 'react-native';
 
 function SignupdrScreen({ navigation }) {
     const [id, setId] = useState('');
     const [password, setPassword] = useState('');
     const [name, setName] = useState('');
-    const [busnumber, setBusnumber] = useState('');
+    const [routeId, setRouteId] = useState('');
+    const [vehicleno, setVehicleno] = useState('');
+    const [cityCode, setCityCode] = useState('');
+    const [cityName, setCityName] = useState('');
+    const [citySearch, setCitySearch] = useState('');
+    const [cities, setCities] = useState([]);
+    const [filteredCities, setFilteredCities] = useState([]);
     const [error, setError] = useState('');
-    const [modalVisible, setModalVisible] = useState(false);
+    const [alertModalVisible, setAlertModalVisible] = useState(false);
+    const [cityModalVisible, setCityModalVisible] = useState(false);
+
+    //도시코드 DB 참조
+    useEffect(() => {
+        const fetchCities = async () => {
+            try {
+                const response = await fetch('http://172.30.1.60:3000/cities');
+                if (response.ok) {
+                    const data = await response.json();
+                    setCities(data);
+                } else {
+                    console.error('Failed to fetch cities:', response.status);
+                }
+            } catch (error) {
+                console.error('Error fetching cities:', error);
+            }
+        };
+
+        fetchCities();
+    }, []);
+
+    const handleCitySearch = (text) => {
+        setCitySearch(text);
+        if (text.length > 0) {
+            const results = cities.filter((city) =>
+                city.cityName.toLowerCase().includes(text.toLowerCase())
+            );
+            setFilteredCities(results);
+        } else {
+            setFilteredCities([]);
+        }
+    };
+
+    const handleCitySelect = (city) => {
+        setCityName(city.cityName);
+        setCityCode(city.cityCode);
+        setCityModalVisible(false);
+    };
 
     const handleSignup = async () => {
-        if (!id || !password || !name || !busnumber) {
+        if (!id || !password || !name || !cityCode || !routeId || !vehicleno) {
             setError('모든 항목을 입력해주세요.');
-            setModalVisible(true);
+            setAlertModalVisible(true);
             return;
         }
         try {
@@ -21,24 +65,24 @@ function SignupdrScreen({ navigation }) {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ id, password, name, busnumber }),
+                body: JSON.stringify({ id, password, name, cityCode, routeId, vehicleno }),
             });
             const result = await response.json();
             if (response.ok) {
                 setError('회원가입이 완료되었습니다.');
-                setModalVisible(true);
+                setAlertModalVisible(true);
                 navigation.navigate('Home');
             } else if (response.status === 409) {
                 setError('이미 존재하는 ID입니다. 다른 ID를 사용해주세요.');
-                setModalVisible(true);
+                setAlertModalVisible(true);
             } else {
                 setError('운전자 등록에 실패했습니다.');
-                setModalVisible(true);
+                setAlertModalVisible(true);
             }
         } catch (error) {
             console.error('운전자 회원가입 오류:', error);
             setError('서버 연결 실패');
-            setModalVisible(true);
+            setAlertModalVisible(true);
         }
     };
 
@@ -49,16 +93,16 @@ function SignupdrScreen({ navigation }) {
              {/* 알림 창 */}
              <Modal
                 transparent={true}
-                visible={modalVisible}
+                visible={alertModalVisible}
                 animationType="fade"
-                onRequestClose={() => setModalVisible(false)}
+                onRequestClose={() => setAlertModalVisible(false)}
             >
                 <View style={styles.modalContainer}>
                     <View style={styles.modalContent}>
                         <Text style={styles.errorMessage}>{error}</Text>
                         <TouchableOpacity
                             style={styles.closeButton}
-                            onPress={() => setModalVisible(false)}
+                            onPress={() => setAlertModalVisible(false)}
                         >
                             <Text style={styles.closeButtonText}>닫기</Text>
                         </TouchableOpacity>
@@ -86,15 +130,62 @@ function SignupdrScreen({ navigation }) {
                 value={name}
                 onChangeText={setName}
             />
+            <TouchableOpacity
+                style={styles.input}
+                onPress={() => setCityModalVisible(true)}
+            >
+                <Text>{cityName || '도시를 선택해주세요'}</Text>
+            </TouchableOpacity>
             <TextInput
                 style={styles.input}
-                placeholder="버스번호"
-                value={busnumber}
-                onChangeText={setBusnumber}
+                placeholder="노선번호"
+                value={routeId}
+                onChangeText={setRouteId}
+            />
+            <TextInput
+                style={styles.input}
+                placeholder="차량번호"
+                value={vehicleno}
+                onChangeText={setVehicleno}
             />
             <TouchableOpacity style={styles.button} onPress={handleSignup}>
                 <Text style={styles.buttonText}>완료</Text>
             </TouchableOpacity>
+
+            {/* 도시선택 Modal */}
+            <Modal
+                visible={cityModalVisible}
+                animationType="slide"
+                transparent={false}
+                onRequestClose={() => setCityModalVisible(false)}
+            >
+                <View style={styles.modalContainer}>
+                    <TextInput
+                        style={styles.input}
+                        placeholder="도시명 검색"
+                        value={citySearch}
+                        onChangeText={handleCitySearch}
+                    />
+                    <FlatList
+                        data={filteredCities}
+                        keyExtractor={(item) => item.cityCode}
+                        renderItem={({ item }) => (
+                            <TouchableOpacity
+                                style={styles.cityItem}
+                                onPress={() => handleCitySelect(item)}
+                            >
+                                <Text>{item.cityName}</Text>
+                            </TouchableOpacity>
+                        )}
+                    />
+                    <TouchableOpacity
+                        style={styles.closeButton}
+                        onPress={() => setCityModalVisible(false)}
+                    >
+                        <Text style={styles.closeButtonText}>닫기</Text>
+                    </TouchableOpacity>
+                </View>
+            </Modal>
         </View>
     );
 }
@@ -131,7 +222,6 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: '#333',
     },
-    
     modalContainer: {
         flex: 1,
         justifyContent: 'center',
@@ -155,6 +245,11 @@ const styles = StyleSheet.create({
         color: '#333',
         marginBottom: 20,
         textAlign: 'center',
+    },
+    cityItem: {
+        padding: 15,
+        borderBottomWidth: 1,
+        borderBottomColor: '#ccc',
     },
     closeButton: {
         backgroundColor: '#F3C623',

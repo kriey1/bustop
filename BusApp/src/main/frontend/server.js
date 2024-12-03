@@ -1,8 +1,13 @@
 const express = require('express');
 const cors = require('cors');
 const mariadb = require('mariadb');
+const http = require('http');
+const WebSocket = require('ws');
 
 const app = express();
+const server = http.createServer(app);
+const wss = new WebSocket.Server({ server });
+
 const PORT = 3000;
 const IP_ADDRESS = '221.168.128.40';
 
@@ -36,8 +41,8 @@ app.get('/search', async (req, res) => {
 //운전자 회원가입 (dirver 테이블)
 app.post('/signup-driver', async (req, res) => {
   console.log('요청 데이터:', req.body);
-  const { id, password, name, busnumber } = req.body;
-  if (!id || !password || !name || !busnumber) {
+  const { id, password, name, cityCode, routeId, vehicleno } = req.body;
+  if (!id || !password || !name || !cityCode || !routeId || !vehicleno) {
     return res.status(400).json({ message: '누락된 정보가 있습니다.' });
   }
   let conn;
@@ -60,8 +65,8 @@ app.post('/signup-driver', async (req, res) => {
             return res.status(409).json({ message: '이미 존재하는 ID입니다.' });
         }
     //버스기사 추가
-    const query = `INSERT INTO driver (id, password, name, busnumber) VALUES (?, ?, ?, ?)`;
-    await conn.query(query, [id, password, name, busnumber]);
+    const query = `INSERT INTO driver (id, password, name, cityCode, routeId, vehicleno) VALUES (?, ?, ?, ?, ?, ?)`;
+    await conn.query(query, [id, password, name, cityCode, routeId, vehicleno]);
     res.status(201).json({ message: '운전자 회원가입 성공' });
   } catch (error) {
     console.error('운전자 회원가입 오류:', error);
@@ -75,8 +80,8 @@ app.post('/signup-driver', async (req, res) => {
 // 보호자 회원가입 (NOK 테이블)
 app.post('/signup-nok', async (req, res) => {
   console.log('요청 데이터:', req.body);
-  const { id, password, name, number, kin } = req.body;
-  if (!id || !password || !name || !number || !kin) {
+  const { id, password, name, number, registration } = req.body;
+  if (!id || !password || !name || !number || !registration) {
     return res.status(400).json({ message: '누락된 정보가 있습니다.' });
   }
   let conn;
@@ -100,8 +105,8 @@ app.post('/signup-nok', async (req, res) => {
         }
 
   //보호자 추가
-    const query = `INSERT INTO nok (id, password, name, number, kin) VALUES (?, ?, ?, ?, ?)`;
-    await conn.query(query, [id, password, name, number, kin]);
+    const query = `INSERT INTO nok (id, password, name, number, registration) VALUES (?, ?, ?, ?, ?)`;
+    await conn.query(query, [id, password, name, number, registration]);
     res.status(201).json({ message: '보호자 회원가입 성공' });
   } catch (error) {
     console.error('보호자 회원가입 오류:', error);
@@ -126,13 +131,15 @@ app.post('/login', async (req, res) => {
       //테이블에서 순차적으로 검색
       const tables = ['user', 'driver', 'nok'];
       for (const table of tables) {
-          const query = `SELECT password FROM ${table} WHERE id = ?`;
-          const [user] = await conn.query(query, [id]);
+        const query = `SELECT * FROM ${table} WHERE id = ?`; // 전체 데이터 가져오기
+        const [user] = await conn.query(query, [id]);
 
           if (user) {
               // 비밀번호 확인
               if (user.password === password) {
-                  return res.status(200).json({ message: '로그인 성공', role: table });
+                  delete user.password;
+                  console.log('반환된 유저 데이터:', user);
+                  return res.status(200).json({ message: '로그인 성공', role: table, user });
               } else {
                   return res.status(401).json({ message: '비밀번호가 일치하지 않습니다.' });
               }
@@ -150,7 +157,137 @@ app.post('/login', async (req, res) => {
   }
 });
 
-// 서버 실행
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`서버가 http://${IP_ADDRESS}:${PORT}에서 실행 중입니다.`);
+// 실시간 GPS 데이터 저장소
+const liveGPSData = {}; // { registration: { latitude, longitude, timestamp } }
+// WebSocket 연결 처리
+wss.on('connection', (ws, req) => {
+  const clientIP = req.socket.remoteAddress;
+  console.log(`WebSocket 연결 요청: ${clientIP}`);
+  console.log('WebSocket 연결 성공');
+
+  // 클라이언트로부터 메시지를 수신
+  ws.on('message', (message) => {
+    try {
+        const data = JSON.parse(message);
+
+        // GPS 데이터 업데이트
+        if (data.type === 'gps-update') {
+            const { registration, departure, destination, latitude, longitude } = data;
+
+            if (!registration || !departure || !destination || !latitude || !longitude ) {
+                throw new Error('GPS 데이터가 부족합니다.');
+            }
+
+            liveGPSData[registration] = {
+                departure,
+                destination,
+                latitude,
+                longitude,
+                timestamp: new Date(),
+            };
+            console.log(`GPS 업데이트: ${registration} ->`, liveGPSData[registration]);
+        }
+
+        // GPS 데이터 요청
+        if (data.type === 'gps-request') {
+            const { registration } = data;
+
+            if (!registration) {
+                throw new Error('등록번호가 누락되었습니다.');
+            }
+
+            const gpsData = liveGPSData[registration];
+            if (gpsData) {
+                ws.send(
+                    JSON.stringify({
+                        type: 'gps-response',
+                        registration,
+                        ...gpsData,
+                    })
+                );
+            } else {
+                ws.send(
+                    JSON.stringify({
+                        type: 'error',
+                        message: 'GPS 데이터가 없습니다.',
+                    })
+                );
+            }
+        }
+    } catch (error) {
+        console.error('WebSocket 메시지 처리 오류:', error.message);
+        ws.send(
+            JSON.stringify({
+                type: 'error',
+                message: error.message || '잘못된 요청입니다.',
+            })
+        );
+    }
+});
+
+ws.on('close', () => {
+    console.log('WebSocket 연결 종료');
+});
+
+ws.on('error', (error) => {
+    console.error('WebSocket 서버 오류:', error);
+});
+});
+
+
+//버스 하차 요청
+wss.on('connection', (ws) => {
+  console.log('WebSocket 연결 성공');
+
+  ws.on('message', (message) => {
+      console.log('메시지 수신 원본:', message); // 원본 메시지 디버깅
+
+      try {
+          const data = JSON.parse(message);
+          console.log('파싱된 메시지:', data);
+
+          if (data.type === 'activate-bell') {
+              console.log('하차벨 활성화 요청 수신:', data);
+
+              // 특정 클라이언트로 메시지 브로드캐스트
+              wss.clients.forEach((client) => {
+                  if (client.readyState === WebSocket.OPEN) {
+                      client.send(JSON.stringify(data));
+                      console.log('클라이언트로 메시지 전송:', data);
+                  }
+              });
+          }
+      } catch (error) {
+          console.error('WebSocket 메시지 처리 오류:', error.message);
+      }
+  });
+
+  ws.on('close', () => {
+      console.log('WebSocket 연결 종료');
+  });
+
+  ws.on('error', (error) => {
+      console.error('WebSocket 에러:', error);
+  });
+});
+
+// 도시 목록
+app.get('/cities', async (req, res) => {
+  let connection;
+  try {
+      connection = await pool.getConnection();
+      // SQL 쿼리 실행
+      const rows = await connection.query('SELECT cityCode, cityName FROM cities');
+      res.json(rows); // 결과 반환
+  } catch (error) {
+      console.error('도시 데이터 조회 오류:', error);
+      res.status(500).send('서버 오류');
+  } finally {
+      if (connection) connection.end(); // 연결 해제
+  }
+});
+
+
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`HTTP 및 WebSocket 서버가 http://${IP_ADDRESS}:${PORT}에서 실행 중입니다`);
 });
