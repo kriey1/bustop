@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { View, Button, TextInput, Text, Alert, FlatList, TouchableOpacity } from 'react-native';
 import * as Location from 'expo-location';
-import { Speech } from 'expo-speech';
 
 const DestinationSearchingScreen = () => {
   const [destination, setDestination] = useState('');
@@ -33,7 +32,7 @@ const DestinationSearchingScreen = () => {
 //테스트용 수동검색
   const TextSearching = async (destination) => {
     try {
-        const response = await fetch(`http://172.30.1.60:3000/search?destination=${destination}`);
+        const response = await fetch(`http://221.168.128.40:3000/search?destination=${destination}`);
         const results = await response.json();
         return results;
       } catch (error) {
