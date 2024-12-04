@@ -1,5 +1,5 @@
 // app/screens/TestScreen.js
-import React from 'react';
+/*import React from 'react';
 import { View, Text, Button, StyleSheet } from 'react-native';
 import { Link } from 'expo-router';
 
@@ -75,4 +75,4 @@ function TestScreen({ navigation }) {
         }
       });
 
-// export default TestScreen; */
+export default TestScreen;*/

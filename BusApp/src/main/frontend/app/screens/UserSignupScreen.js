@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import useUserStore from '../store/userStore';
 
 function UserSignupScreen({ navigation }) {
+  const { setUserInfo } = useUserStore();
   const [pin, setPin] = useState('');
 
   useEffect(() => {
@@ -34,7 +36,7 @@ function UserSignupScreen({ navigation }) {
 
   const savePinToServer = async (pin) => {
     try {
-      const response = await fetch('http://221.168.128.40:3000/signup-user', {
+      const response = await fetch('http://221.168.128.40:3000/signup-users', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

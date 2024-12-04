@@ -6,12 +6,12 @@ function SignupgrScreen({ navigation }) {
     const [password, setPassword] = useState('');
     const [name, setName] = useState('');
     const [number, setNumber] = useState('');
-    const [registration, setRegistration] = useState('');
+    const [pin, setPin] = useState('');
     const [error, setError] = useState('');
     const [modalVisible, setModalVisible] = useState(false);
 
     const handleSignup = async () => {
-        if (!id || !password || !name || !number || !registration) {
+        if (!id || !password || !name || !number || !pin) {
             setError('모든 항목을 입력해주세요.');
             setModalVisible(true);
             return;
@@ -22,7 +22,7 @@ function SignupgrScreen({ navigation }) {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ id, password, name, number, registration }),
+                body: JSON.stringify({ id, password, name, number, pin }),
             });
             const result = await response.json();
             if (response.ok) {
@@ -96,8 +96,8 @@ function SignupgrScreen({ navigation }) {
             <TextInput
                 style={styles.input}
                 placeholder="등록번호"
-                value={registration}
-                onChangeText={setRegistration}
+                value={pin}
+                onChangeText={setPin}
             />
             <TouchableOpacity style={styles.button} onPress={handleSignup}>
                 <Text style={styles.buttonText}>완료</Text>

@@ -39,7 +39,7 @@ app.get('/search', async (req, res) => {
 });
 
 // 유저 회원가입, PIN 번호
-app.post('/signup-user', async (req, res) => {
+app.post('/signup-users', async (req, res) => {
     const { pin } = req.body;
   
     if (!pin || pin.length !== 6) {
@@ -47,6 +47,7 @@ app.post('/signup-user', async (req, res) => {
     }
     let conn;
     try{
+      conn = await pool.getConnection();
     const query = 'INSERT INTO users (pin) VALUES (?)';
     await conn.query(query, [pin]);
     res.status(201).json({ message: '유저 회원가입 성공' });
@@ -102,8 +103,8 @@ app.post('/signup-driver', async (req, res) => {
 // 보호자 회원가입 (NOK 테이블)
 app.post('/signup-nok', async (req, res) => {
   console.log('요청 데이터:', req.body);
-  const { id, password, name, number, registration } = req.body;
-  if (!id || !password || !name || !number || !registration) {
+  const { id, password, name, number, pin } = req.body;
+  if (!id || !password || !name || !number || !pin) {
     return res.status(400).json({ message: '누락된 정보가 있습니다.' });
   }
   let conn;
@@ -127,8 +128,8 @@ app.post('/signup-nok', async (req, res) => {
         }
 
   //보호자 추가
-    const query = `INSERT INTO nok (id, password, name, number, registration) VALUES (?, ?, ?, ?, ?)`;
-    await conn.query(query, [id, password, name, number, registration]);
+    const query = `INSERT INTO nok (id, password, name, number, pin) VALUES (?, ?, ?, ?, ?)`;
+    await conn.query(query, [id, password, name, number, pin]);
     res.status(201).json({ message: '보호자 회원가입 성공' });
   } catch (error) {
     console.error('보호자 회원가입 오류:', error);
@@ -180,7 +181,7 @@ app.post('/login', async (req, res) => {
 });
 
 // 실시간 GPS 데이터 저장소
-const liveGPSData = {}; // { registration: { latitude, longitude, timestamp } }
+const liveGPSData = {}; // { pin: { latitude, longitude, timestamp } }
 // WebSocket 연결 처리
 wss.on('connection', (ws, req) => {
   const clientIP = req.socket.remoteAddress;
@@ -194,36 +195,36 @@ wss.on('connection', (ws, req) => {
 
         // GPS 데이터 업데이트
         if (data.type === 'gps-update') {
-            const { registration, departure, destination, latitude, longitude } = data;
+            const { pin, departure, destination, latitude, longitude } = data;
 
-            if (!registration || !departure || !destination || !latitude || !longitude ) {
+            if (!pin || !departure || !destination || !latitude || !longitude ) {
                 throw new Error('GPS 데이터가 부족합니다.');
             }
 
-            liveGPSData[registration] = {
+            liveGPSData[pin] = {
                 departure,
                 destination,
                 latitude,
                 longitude,
                 timestamp: new Date(),
             };
-            console.log(`GPS 업데이트: ${registration} ->`, liveGPSData[registration]);
+            console.log(`GPS 업데이트: ${pin} ->`, liveGPSData[pin]);
         }
 
         // GPS 데이터 요청
         if (data.type === 'gps-request') {
-            const { registration } = data;
+            const { pin } = data;
 
-            if (!registration) {
+            if (!pin) {
                 throw new Error('등록번호가 누락되었습니다.');
             }
 
-            const gpsData = liveGPSData[registration];
+            const gpsData = liveGPSData[pin];
             if (gpsData) {
                 ws.send(
                     JSON.stringify({
                         type: 'gps-response',
-                        registration,
+                        pin,
                         ...gpsData,
                     })
                 );

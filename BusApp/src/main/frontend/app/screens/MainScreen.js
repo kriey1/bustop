@@ -4,9 +4,9 @@ import { Audio } from 'expo-av'; // 오디오 녹음
 import * as FileSystem from 'expo-file-system'; // 파일 시스템
 import * as Speech from 'expo-speech'; // TTS
 import axios from 'axios'; // HTTP 요청
-import useUserStore from '../store/userStore'; //유저정보
 import * as Location from 'expo-location'; //위치정보
 import AsyncStorage from '@react-native-async-storage/async-storage';
+
 
 const GOOGLE_CLOUD_API_KEY = "AIzaSyD6lQ6JOwarbfY6KvERXsVXxdOpXRHqeh0"; // Google Cloud API 키 입력
 
@@ -15,11 +15,10 @@ function MainScreen({ nearestStation }) {
   const [recognizedText, setRecognizedText] = useState(''); // 변환된 텍스트
   const [currentStep, setCurrentStep] = useState(0); // 메시지 순서
   const [isListening, setIsListening] = useState(false); // 음성 인식 상태
-  const { userInfo, registration } = useUserStore();
   const vehicleno = "대전75자2337"; // 임시 버스 번호
   const [departure, setDeparture] = useState('천마사');
   const [destination, setDestination] = useState('가수원네거리');
-  
+
   const handleReset = async () => {
     try {
       await AsyncStorage.clear();
@@ -30,6 +29,25 @@ function MainScreen({ nearestStation }) {
     }
   };
 
+  let cachedPin = null;
+
+useEffect(() => {
+  const loadPin = async () => {
+    if (!cachedPin) {
+      cachedPin = await AsyncStorage.getItem('userPin'); // PIN 값 캐싱
+    }
+
+    if (!cachedPin) {
+      console.error('PIN 정보가 없습니다.');
+      return;
+    }
+
+    console.log('캐싱된 PIN:', cachedPin);
+  };
+
+  loadPin();
+}, []);
+
   // WebSocket 및 GPS 데이터 전송
   useEffect(() => {
     const ws = new WebSocket('ws://221.168.128.40:3000'); // WebSocket 서버 주소
@@ -38,39 +56,48 @@ function MainScreen({ nearestStation }) {
       console.log('WebSocket 연결 성공');
 
       const sendGPSData = async () => {
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== 'granted') {
-          console.error('위치 권한이 거부되었습니다.');
+        if (!cachedPin) {
+          console.error('캐싱된 PIN이 없습니다. 데이터 전송을 중단합니다.');
           return;
         }
-
-        const location = await Location.getCurrentPositionAsync({});
-        const data = {
-          type: 'gps-update',
-          departure,
-          destination,
-          registration: userInfo?.registration,
-          latitude: location.coords.latitude,
-          longitude: location.coords.longitude,
-        };
-        ws.send(JSON.stringify(data)); // 서버로 GPS 데이터 전송
-        console.log('GPS 데이터 전송:', data);
+        try {
+          const { status } = await Location.requestForegroundPermissionsAsync();
+          if (status !== 'granted') {
+            console.error('위치 권한이 거부되었습니다.');
+            return;
+          }
+  
+          const location = await Location.getCurrentPositionAsync({});
+          const data = {
+            type: 'gps-update',
+            departure,
+            destination,
+            pin: cachedPin, // PIN 정보 사용
+            latitude: location.coords.latitude,
+            longitude: location.coords.longitude,
+          };
+  
+          ws.send(JSON.stringify(data)); // 서버로 GPS 데이터 전송
+          console.log('GPS 데이터 전송:', data);
+        } catch (error) {
+          console.error('GPS 데이터 전송 중 오류:', error);
+        }
       };
-
+  
       // 5초마다 GPS 데이터를 서버로 전송
       const interval = setInterval(sendGPSData, 5000);
-
+  
       return () => clearInterval(interval); // 컴포넌트 언마운트 시 인터벌 정리
     };
-
+  
     ws.onclose = () => {
       console.log('WebSocket 연결 종료');
     };
-
+  
     return () => {
       if (ws) ws.close();
     };
-  }, [registration]);
+  }, [departure, destination]);
 
  // 하차벨 활성화 메시지 전송
  const activateBusBell = () => {
