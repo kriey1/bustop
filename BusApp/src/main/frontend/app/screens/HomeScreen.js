@@ -2,21 +2,34 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import FingerprintScanner from 'react-native-fingerprint-scanner'; // 패키지 변경
+import Sensor from '../components/Sensor';
 
 function HomeScreen({ navigation }) {
-    const checkRegistration = async () => {
-      try {
-        const userPin = await AsyncStorage.getItem('userPin'); // 6자리 PIN 확인
-        if (userPin) {
-          navigation.replace('Main'); // 번호가 있으면 메인 화면으로 이동
-        } else {
-          navigation.replace('UserSignupScreen'); // 번호가 없으면 회원가입 화면으로 이동
-        }
-      } catch (error) {
-        console.error('Error checking user registration:', error);
-      }
-    };
+  const handleFaceIDAuthentication = async () => {
+    try {
+      await FingerprintScanner.authenticate({ description: '얼굴 인식을 진행합니다.' });
+      alert('얼굴 인식이 완료되었습니다.');
+      navigation.navigate('Main');
+    } catch (error) {
+      alert('Face ID 인증에 실패했습니다.');
+    } finally {
+      FingerprintScanner.release();
+    }
+  };
 
+  const checkRegistration = async () => {
+    try {
+      const userPin = await AsyncStorage.getItem('userPin'); // 6자리 PIN 확인
+      if (userPin) {
+        navigation.replace('Main'); // 번호가 있으면 메인 화면으로 이동
+      } else {
+        navigation.replace('UserSignupScreen'); // 번호가 없으면 회원가입 화면으로 이동
+      }
+    } catch (error) {
+      console.error('Error checking user registration:', error);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -42,7 +55,7 @@ function HomeScreen({ navigation }) {
           <Text style={styles.touchText}>Touch!</Text>
         </TouchableOpacity>
 
-        {/* Touch 버튼을 눌렀을 때 MainScreen으로 이동 */}
+        {/* Touch 버튼을 눌렀을 때 TestScreen으로 이동 */}
         <TouchableOpacity onPress={() => navigation.navigate('Test')}>
           <Text style={styles.touchText}>test!</Text>
         </TouchableOpacity>
