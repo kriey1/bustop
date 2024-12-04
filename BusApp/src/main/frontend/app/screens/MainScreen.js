@@ -6,6 +6,7 @@ import * as Speech from 'expo-speech'; // TTS
 import axios from 'axios'; // HTTP 요청
 import useUserStore from '../store/userStore'; //유저정보
 import * as Location from 'expo-location'; //위치정보
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const GOOGLE_CLOUD_API_KEY = "AIzaSyD6lQ6JOwarbfY6KvERXsVXxdOpXRHqeh0"; // Google Cloud API 키 입력
 
@@ -19,6 +20,15 @@ function MainScreen({ nearestStation }) {
   const [departure, setDeparture] = useState('천마사');
   const [destination, setDestination] = useState('가수원네거리');
   
+  const handleReset = async () => {
+    try {
+      await AsyncStorage.clear();
+      Alert.alert('초기화 완료', '모든 데이터가 삭제되었습니다.');
+      navigation.replace('UserSignupScreen'); // 초기화 후 다시 회원가입 화면으로 이동
+    } catch (error) {
+      Alert.alert('초기화 실패', '데이터 삭제 중 문제가 발생했습니다.');
+    }
+  };
 
   // WebSocket 및 GPS 데이터 전송
   useEffect(() => {
@@ -186,6 +196,10 @@ function MainScreen({ nearestStation }) {
 
   return (
     <View style={styles.container}>
+      {/* 초기화 버튼 */}
+      <TouchableOpacity style={styles.resetButton} onPress={handleReset}>
+        <Text style={styles.resetText}>초기화</Text>
+      </TouchableOpacity>
       <View style={styles.messageContainer}>
         <Text style={styles.messageText}>{messages[currentStep].text}</Text>
         {messages[currentStep].useTap && renderOptions()}
@@ -216,17 +230,17 @@ function MainScreen({ nearestStation }) {
       )}
 
       <TouchableOpacity
-    style={styles.touchButton}
-    onPress={() => {
-        if (currentStep === messages.length - 1) {
-            // 완료 단계일 때 실행할 작업
-            console.log("완료 버튼 클릭");
-            activateBusBell(); // 하차벨 활성화
-        } else {
-            nextStep(); // 다음 단계로 이동
-        }
-    }}
->
+          style={styles.touchButton}
+          onPress={() => {
+              if (currentStep === messages.length - 1) {
+                  // 완료 단계일 때 실행할 작업
+                  console.log("완료 버튼 클릭");
+                  activateBusBell(); // 하차벨 활성화
+              } else {
+                  nextStep(); // 다음 단계로 이동
+              }
+          }}
+      >
     <Text style={styles.touchButtonText}>
         {currentStep === messages.length - 1 ? "완료" : "Touch!"}
     </Text>

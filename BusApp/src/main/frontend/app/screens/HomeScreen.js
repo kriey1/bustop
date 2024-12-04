@@ -1,8 +1,23 @@
 // src/main/frontend/app/screens/HomeScreen.js
 import React from 'react';
 import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 function HomeScreen({ navigation }) {
+    const checkRegistration = async () => {
+      try {
+        const userPin = await AsyncStorage.getItem('userPin'); // 6자리 PIN 확인
+        if (userPin) {
+          navigation.replace('Main'); // 번호가 있으면 메인 화면으로 이동
+        } else {
+          navigation.replace('UserSignupScreen'); // 번호가 없으면 회원가입 화면으로 이동
+        }
+      } catch (error) {
+        console.error('Error checking user registration:', error);
+      }
+    };
+
+
   return (
     <View style={styles.container}>
       {/* 상단 문구 */}
@@ -22,8 +37,8 @@ function HomeScreen({ navigation }) {
       <View style={styles.touchContainer}>
         <Image source={require('../screens/image/bus.png')} style={styles.busImage} />
         
-        {/* Touch 버튼을 눌렀을 때 MainScreen으로 이동 */}
-        <TouchableOpacity onPress={() => navigation.navigate('Main')}>
+        {/* Touch 버튼을 눌렀을 때 checkRegistration 진행 */}
+        <TouchableOpacity onPress={checkRegistration}>
           <Text style={styles.touchText}>Touch!</Text>
         </TouchableOpacity>
 

@@ -38,6 +38,28 @@ app.get('/search', async (req, res) => {
   }
 });
 
+// 유저 회원가입, PIN 번호
+app.post('/signup-user', async (req, res) => {
+    const { pin } = req.body;
+  
+    if (!pin || pin.length !== 6) {
+      return res.status(400).send('Invalid PIN');
+    }
+    let conn;
+    try{
+    const query = 'INSERT INTO users (pin) VALUES (?)';
+    await conn.query(query, [pin]);
+    res.status(201).json({ message: '유저 회원가입 성공' });
+  } catch (error) {
+    console.error('유저 회원가입 오류:', error);
+    res.status(500).json({ message: '유저 회원가입 실패' });
+  }
+  finally{
+    if (conn) conn.release();
+  }
+  });
+
+
 //운전자 회원가입 (dirver 테이블)
 app.post('/signup-driver', async (req, res) => {
   console.log('요청 데이터:', req.body);

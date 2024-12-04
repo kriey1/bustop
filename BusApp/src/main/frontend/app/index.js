@@ -12,6 +12,7 @@ import DestinationSearchingScreen from './screens/navigation/DestinationSearchin
 import NavigateStartScreen from './screens/navigation/NavigateStartScreen'
 import BusDriverScreen from './screens/BusDriverScreen';
 import NokScreen from './screens/NokScreen';
+import UserSignupScreen from './screens/UserSignupScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -29,6 +30,7 @@ function StackNavigator() {
       <Stack.Screen name="NavigateStart" component={NavigateStartScreen}/>
       <Stack.Screen name="BusDriverScreen" component={BusDriverScreen}/>
       <Stack.Screen name="NokScreen" component={NokScreen}/>
+      <Stack.Screen name="UserSignupScreen" component={UserSignupScreen}/>
     </Stack.Navigator>
   );
 }
