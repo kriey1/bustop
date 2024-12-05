@@ -18,18 +18,18 @@ function HomeScreen({ navigation }) {
     }
   };
 
-  const checkRegistration = async () => {
-    try {
-      const userPin = await AsyncStorage.getItem('userPin'); // 6자리 PIN 확인
-      if (userPin) {
-        navigation.replace('Main'); // 번호가 있으면 메인 화면으로 이동
-      } else {
-        navigation.replace('UserSignupScreen'); // 번호가 없으면 회원가입 화면으로 이동
-      }
-    } catch (error) {
-      console.error('Error checking user registration:', error);
-    }
-  };
+  // const checkRegistration = async () => {
+  //   try {
+  //     const userPin = await AsyncStorage.getItem('userPin'); // 6자리 PIN 확인
+  //     if (userPin) {
+  //       navigation.replace('Main'); // 번호가 있으면 메인 화면으로 이동
+  //     } else {
+  //       navigation.replace('UserSignupScreen'); // 번호가 없으면 회원가입 화면으로 이동
+  //     }
+  //   } catch (error) {
+  //     console.error('Error checking user registration:', error);
+  //   }
+  // };
 
   return (
     <View style={styles.container}>
@@ -51,7 +51,8 @@ function HomeScreen({ navigation }) {
         <Image source={require('../screens/image/bus.png')} style={styles.busImage} />
         
         {/* Touch 버튼을 눌렀을 때 checkRegistration 진행 */}
-        <TouchableOpacity onPress={checkRegistration}>
+        {/* <TouchableOpacity onPress={checkRegistration}> */}
+        <TouchableOpacity onPress={() => navigation.navigate('Main')}>
           <Text style={styles.touchText}>Touch!</Text>
         </TouchableOpacity>
 
