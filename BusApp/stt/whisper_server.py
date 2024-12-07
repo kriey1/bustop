@@ -34,14 +34,23 @@ def transcribe_audio():
         file_path = "./temp_audio.wav"
         file.save(file_path)
 
+         # 저장된 파일 확인
+        if not os.path.exists(file_path):
+            print(f"오류: 파일이 저장되지 않았습니다. 경로: {file_path}")
+            return jsonify({"error": "파일 저장 실패"}), 500
+        
         print(f"파일이 {file_path}에 저장되었습니다. Whisper로 변환 시작...")
-
+        print(f"Whisper가 처리할 파일 경로: {file_path}")
         # Whisper를 사용해 STT 변환
-        result = model.transcribe(file_path, language="ko")
-        os.remove(file_path)  # 임시 파일 삭제
-        print("STT 변환 완료:", result["text"])
-
-        return jsonify({"text": result["text"]})
+        try:
+            result = model.transcribe(file_path, language="ko")
+            os.remove(file_path)  # 임시 파일 삭제
+            print("STT 변환 완료:", result["text"])
+            return jsonify({"text": result["text"]})
+        except Exception as e:
+            print(f"Whisper 변환 중 오류 발생: {e}")
+            return jsonify({"error": "Whisper 처리 오류"}), 500
+        
     except Exception as e:
         print(f"오류 발생: {str(e)}")
         return jsonify({"error": str(e)}), 500

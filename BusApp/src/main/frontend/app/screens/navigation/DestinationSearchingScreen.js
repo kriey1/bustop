@@ -4,6 +4,7 @@ import * as Location from 'expo-location';
 
 const DestinationSearchingScreen = () => {
   const [destination, setDestination] = useState('');
+  const [destinationCoords, setDestinationCoords] = useState(null);
   const [searchResults, setSearchResults] = useState([]);
 
   //사용자 위치정보

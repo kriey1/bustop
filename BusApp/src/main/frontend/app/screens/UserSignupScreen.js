@@ -36,7 +36,7 @@ function UserSignupScreen({ navigation }) {
 
   const savePinToServer = async (pin) => {
     try {
-      const response = await fetch('http://221.168.128.40:3000/signup-users', {
+      const response = await fetch('http://221.168.128.40:3000/signup-user', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

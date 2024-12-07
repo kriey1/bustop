@@ -39,7 +39,7 @@ app.get('/search', async (req, res) => {
 });
 
 // 유저 회원가입, PIN 번호
-app.post('/signup-users', async (req, res) => {
+app.post('/signup-user', async (req, res) => {
     const { pin } = req.body;
   
     if (!pin || pin.length !== 6) {
