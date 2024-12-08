@@ -6,16 +6,16 @@ function BusDriverScreen() {
     const { userInfo } = useUserStore();
     const [isAlertActive, setIsAlertActive] = useState(false);
     const [alertText, setAlertText] = useState('정상 운행');//중앙 알림 텍스트
+    const [getOnList, setGetOnList] = useState([null]);
     const [busLocation, setBusLocation] = useState({ latitude: null, longitude: null });
-    const [wsStatus, setWsStatus] = useState('연결 중...');
     const ws = React.useRef(null); // WebSocket
     const [currentNode, setCurrentNode] = useState({ nodeid: null, nodenm: null });
     const [previousStop, setPreviousStop] = useState(); // 이전 정류장
     const [nextStop, setNextStop] = useState(); // 다음 정류장
     const [routeData, setRouteData] = useState([]); // 전체 노선 데이터
     const apiKey = "cjPl5Q0WfmVlbYWXDsTQgOg8KD%2F5R5IMPY4Ft%2Fz%2Bt6FY1NQb2kpRB5PHzkRZsgrSDKDPlSvL0H%2BglmFVN36OBA%3D%3D"; //국토교통부_(TAGO)_버스위치정보 API KEY
-    const cityCode = userInfo?.cityCode; // 대전광역시
-    const routeId = userInfo?.routeId; // 노선 ID
+    const cityCode = userInfo?.cityCode;
+    const routeId = userInfo?.routeId;
 
     //버스 위치 정보
     const fetchBusLocation = async () => {
@@ -116,37 +116,43 @@ function BusDriverScreen() {
 
             ws.current.onopen = () => {
                 console.log('WebSocket 연결 성공');
-                setWsStatus('연결됨');
+                // 클라이언트 등록 메시지 전송
+                ws.current.send(
+                    JSON.stringify({
+                        type: 'register',
+                        vehicleno: userInfo?.vehicleno, // 사용자 차량 번호
+                    })
+                );
+                console.log(`등록된 차량 번호: ${userInfo?.vehicleno}`);
             };
 
             ws.current.onmessage = (event) => {
                 const message = JSON.parse(event.data);
                 console.log(message);
-                if (message.type === 'activate-bell') {
-                    const { destination } = message;
-    
-                    // 노선 데이터에서 destination과 일치하는 nodenm 찾기
-                    const matchingNode= routeData.find(
-                        (node) => node.nodenm === destination
-                    );
-    
-                    if (matchingNode) {
-                        setAlertText(matchingNode.nodenm);
-                        setIsAlertActive(true);
-                        
+                switch (message.type) {
+                    case 'update-getOnList': {
+                        setGetOnList(message.getOnList || []);
+                        console.log('업데이트된 승차 요청 목록:', message.getOnList);
+                        break;
                     }
+                    case 'activate-getOff-bell': {
+                        setAlertText(`${message.targetNode}`);
+                        setIsAlertActive(true);
+                        console.log('하차 요청 알림:', message.targetNode);
+                        break;
+                    }
+                    default:
+                        console.log('알 수 없는 메시지 타입:', message.type);
                 }
             };
 
             ws.current.onclose = () => {
                 console.warn('WebSocket 연결 종료');
-                setWsStatus('연결 끊김');
                 setTimeout(connectWebSocket, 5000); // 5초 후 재연결
             };
 
             ws.current.onerror = (error) => {
                 console.error('WebSocket 에러:', error);
-                setWsStatus('연결 실패');
             };
         };
 
@@ -155,7 +161,7 @@ function BusDriverScreen() {
         return () => {
             if (ws.current) ws.current.close();
         };
-    }, [routeData]);
+    }, [userInfo?.vehicleno]);
     
     // 알림 비활성화
     const deactivateAlert = () => {
@@ -202,9 +208,13 @@ function BusDriverScreen() {
                 </TouchableOpacity>
             </View>
     
-            {/* 하단 정보 */}
             <View style={styles.bottomInfoBox}>
-                
+                <Text>승차 요청 목록: </Text>
+                <Text>
+                    {getOnList.length > 0 
+                        ? getOnList.join(', ') // 배열을 쉼표로 구분하여 문자열로 표시
+                        : '요청 없음'}
+                </Text>
             </View>
         </View>
     );
@@ -237,9 +247,9 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     alertIndicator: {
-        width: 150,
-        height: 150,
-        borderRadius: 75,
+        width: 300,
+        height: 300,
+        borderRadius: 150,
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -250,7 +260,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#F05454', // 경고 상태 색상 (빨강)
     },
     alertText: {
-        fontSize: 20,
+        fontSize: 30,
         color: '#FFF',
         textAlign: 'center',
     },

@@ -7,6 +7,8 @@ const WebSocket = require('ws');
 const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
+const clients = new Map(); // vehicleno와 WebSocket 객체 매핑
+let getOnList = []; //승차 요청 상태
 
 const PORT = 3000;
 const IP_ADDRESS = '221.168.128.40';
@@ -258,7 +260,7 @@ ws.on('error', (error) => {
 });
 
 
-//버스 하차 요청
+//버스 승하차 요청
 wss.on('connection', (ws) => {
   console.log('WebSocket 연결 성공');
 
@@ -269,17 +271,75 @@ wss.on('connection', (ws) => {
           const data = JSON.parse(message);
           console.log('파싱된 메시지:', data);
 
-          if (data.type === 'activate-bell') {
-              console.log('하차벨 활성화 요청 수신:', data);
+          switch (data.type) {
+            // 1. 클라이언트 등록 처리
+            case 'register': {
+                const { vehicleno } = data;
+                if (vehicleno) {
+                    clients.set(vehicleno, ws); // vehicleno와 WebSocket 객체 매핑
+                    console.log(`등록된 차량 번호: ${vehicleno}`);
+                }
+                break;
+            }
+            // 2. 승차 요청 처리
+            case 'activate-getOn-bell': {
+              console.log('승차 요청 수신:', data);
 
-              // 특정 클라이언트로 메시지 브로드캐스트
-              wss.clients.forEach((client) => {
-                  if (client.readyState === WebSocket.OPEN) {
-                      client.send(JSON.stringify(data));
-                      console.log('클라이언트로 메시지 전송:', data);
-                  }
-              });
-          }
+              const { vehicleno } = data;
+              const targetClient = clients.get(vehicleno);
+
+              if (targetClient && targetClient.readyState === WebSocket.OPEN) {
+                  targetClient.send(JSON.stringify({
+                      type: 'activate-getOn-bell',
+                      firstNode: data.firstNode,
+                  }));
+                  console.log(`승차 요청 전송: ${data.firstNode} -> ${vehicleno}`);
+              } else {
+                  console.warn(`대상 차량(${vehicleno})을 찾을 수 없습니다.`);
+              }
+              break;
+            }
+
+            // 3. 하차 요청 처리
+            case 'activate-getOff-bell': {
+                console.log('하차 요청 수신:', data);
+
+                const { vehicleno, targetNode } = data;
+                const targetClient = clients.get(vehicleno);
+
+                if (targetClient && targetClient.readyState === WebSocket.OPEN) {
+                    targetClient.send(JSON.stringify({
+                        type: 'activate-getOff-bell',
+                        targetNode,
+                    }));
+                    console.log(`하차 요청 전송: ${targetNode} -> ${vehicleno}`);
+                } else {
+                    console.warn(`대상 차량(${vehicleno})을 찾을 수 없습니다.`);
+                }
+                break;
+            }
+
+            // 특정 요청 제거
+            case 'clear-specific-getOn-bell': {
+              console.log('특정 승차 요청 제거 요청 수신:', data.firstNode);
+
+              getOnList = getOnList.filter((node) => node !== data.firstNode);
+
+              const { vehicleno } = data;
+              const targetClient = clients.get(vehicleno);
+
+              if (targetClient && targetClient.readyState === WebSocket.OPEN) {
+                  targetClient.send(JSON.stringify({
+                      type: 'update-getOnList',
+                      getOnList,
+                  }));
+                  console.log(`수정된 승차 요청 목록 전송: ${getOnList} -> ${vehicleno}`);
+              }
+              break;
+            }
+            default:
+            console.warn('알 수 없는 메시지 타입:', data.type);
+        }
       } catch (error) {
           console.error('WebSocket 메시지 처리 오류:', error.message);
       }

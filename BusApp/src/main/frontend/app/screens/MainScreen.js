@@ -24,12 +24,18 @@ function MainScreen({ nearestStation }) {
   const [destination, setDestination] = useState('군포시장애인복지관'); //목적지
   const [destinationCoords, setDestinationCoords] = useState({latitude: 37.3626159427669, longitude: 126.93294757362182,});
   const [routeData, setRouteData] = useState(null); //경로
+  const [nodeRouteData, setNodeRouteData] = useState(null); //출발 정류장으로 가는 경로
+  const [currentStepIndex, setCurrentStepIndex] = useState(0);//경로 안내단계
   const [firstNode, setFirstNode] = useState({firstNodeName:'stationName', latitude:'lat', longitude:'lon'}); //출발 정류장
   const [targetNode, setTargetNode] = useState({targetNodeName:'stationName', latitude:'lat', longitude:'lon'}); //도착 정류장
   const cityCode = '31160';
   const [routeInfo, setRouteInfo] = useState({routenm:'', routeId:''});
   const [userVehicleno, setUserVehicleno] = useState(''); // 탑승할 버스 번호
-  const [userNodeord, setUserNodeord] = useState(null); // 유저가 출발 정류소 
+  const [userNodeord, setUserNodeord] = useState(null); // 유저가 출발 정류소
+  const [targetNodeord, setTargetNodeord] = useState(null);
+  const [busStopsAway, setBusStopsAway] = useState(null); // 몇 정거장 전인지 상태 관리
+  const [currentBusNode, setCurrentBusNode] = useState(null);
+  const [currentBusRouteData, setCurrentBusRouteData] = useState(null);
   const apiKey = 'cjPl5Q0WfmVlbYWXDsTQgOg8KD%2F5R5IMPY4Ft%2Fz%2Bt6FY1NQb2kpRB5PHzkRZsgrSDKDPlSvL0H%2BglmFVN36OBA%3D%3D'
   const TMAP_API_KEY = "iORUqRFjtu9JfkUGPMpg040iu3hXCvyS5icJo7kO";
 
@@ -167,7 +173,7 @@ function MainScreen({ nearestStation }) {
     }
   };
 
-  // Tmap POI 검색
+  // Tmap POI로 목적지 검색
   const searchPOI = async (keyword) => {
     try {
       const response = await fetch(
@@ -193,7 +199,7 @@ function MainScreen({ nearestStation }) {
     }
   };
   
-  // 경로 요청
+  // 목적지까지 경로 요청
   const requestRoute = async () => {
     if (!departureCoords.latitude || !departureCoords.longitude) {
       alert('현재 위치를 가져올 수 없습니다.');
@@ -229,7 +235,7 @@ function MainScreen({ nearestStation }) {
       Alert.alert('경로 요청 오류.', error.message);
     }
   };
-
+  //첫번째 경로
   const extractLegDetails = (routeData) => {
     if (
       !routeData ||
@@ -250,6 +256,15 @@ function MainScreen({ nearestStation }) {
       return [];
     }
   
+    // WALK 구간에서 첫 번째 인덱스 데이터 추출
+    const firstWalkingLeg = legs.find((leg) => leg.mode === "WALK");
+
+    if (firstWalkingLeg) {
+      const { steps } = firstWalkingLeg;
+      setNodeRouteData({ steps });
+      console.log("WALK 구간 정보:", { steps });
+    }
+
     // BUS 구간만 필터링하고 추가 정보 추출
     const busLegDetails = legs
       .filter((leg) => leg.mode === "BUS") // BUS인 구간만 필터링
@@ -281,7 +296,7 @@ function MainScreen({ nearestStation }) {
       });
       };
 
-    // 정류장 이름 -> id
+    // 정류장 이름을 ID로 변환
     const getRouteNoList = async (routeNumber) => {
       const routeUrl = `http://apis.data.go.kr/1613000/BusRouteInfoInqireService/getRouteNoList?serviceKey=${apiKey}&cityCode=${cityCode}&routeNo=${routeNumber}&_type=json`;
       try {
@@ -313,15 +328,15 @@ function MainScreen({ nearestStation }) {
         } else {
           console.warn("추출된 노선 정보가 비어 있습니다.");
         }
-        fetchAdjacentStops();
-        console.log("fetchAdjacentStops 호출 완료");
+        findFirstNode();
+        console.log("findFirstNode 호출 완료");
       } catch (error) {
         console.error("노선 데이터를 가져오는 중 오류 발생:", error);
       }
     };
 
-  // 유저의 정류장 정보
-  const fetchAdjacentStops = async () => {
+  //유저의 정류장 정보
+  const findFirstNode = async () => {
     const routeUrl = `http://apis.data.go.kr/1613000/BusRouteInfoInqireService/getRouteAcctoThrghSttnList?serviceKey=${apiKey}&cityCode=${cityCode}&routeId=${routeInfo.routeId}&_type=json`;
     const firstNodeName = firstNode.firstNodeName;
     const targetNodeName = targetNode.targetNodeName;
@@ -331,14 +346,14 @@ function MainScreen({ nearestStation }) {
         const response = await fetch(routeUrl);
         const data = await response.json();
         const totalCount = data?.response?.body?.totalCount;
-        console.log("fetchAdjacentStops API 응답 데이터:", routeInfo.routeId, data);
+        console.log("findFirstNode API 응답 데이터:", routeInfo.routeId, data);
 
         if (totalCount && totalCount > 0) {
             // 전체 데이터를 가져오기 위해 numOfRows에 totalCount 사용
             const fullRouteUrl = `${routeUrl}&numOfRows=${totalCount}`;
             const fullResponse = await fetch(fullRouteUrl);
             const fullData = await fullResponse.json();
-            console.log("fetchAdjacentStops 전체 데이터:", fullData);
+            console.log("findFirstNode 전체 데이터:", fullData);
 
             const items = fullData?.response?.body?.items?.item;
 
@@ -358,6 +373,7 @@ function MainScreen({ nearestStation }) {
 
                 // 가장 근접한 nodeord 쌍 찾기
                 let closestFirstNode = null;
+                let closestTargetNode = null;
                 let closestDistance = Infinity;
 
                 firstNodeMatches.forEach((firstNodeOrd) => {
@@ -365,14 +381,17 @@ function MainScreen({ nearestStation }) {
                     const distance = Math.abs(targetNodeOrd - firstNodeOrd);
                     if (distance < closestDistance) {
                       closestFirstNode = firstNodeOrd;
+                      closestTargetNode = targetNodeOrd;
                       closestDistance = distance;
                     }
                   });
                 });
 
                 if (closestFirstNode !== null) {
-                  setUserNodeord(closestFirstNode); // 상태 업데이트
-                  console.log(`가장 근접한 firstNodeName의 nodeord를 userNodeord로 설정:`, closestFirstNode);
+                  setUserNodeord(closestFirstNode);
+                  setTargetNodeord(closestTargetNode); // 상태 업데이트
+                  console.log(`가장 근접한 firstNodeName의 nodeord와 TargetNode의 nodeord:`, closestFirstNode, closestTargetNode);
+                  return closestFirstNode;
                 } else {
                   console.warn("firstNodeName과 targetNodeName 간의 근접한 nodeord를 찾을 수 없습니다.");
                 }
@@ -383,12 +402,10 @@ function MainScreen({ nearestStation }) {
           }
   };
 
-
-  //추가작업할곳
-  // 유저의 정류정에서 타야 할 버스 정보 찾기
+  //버스 위치 정보
   const fetchBusLocation = async () => {
-    const busUrl = `http://apis.data.go.kr/1613000/BusLcInfoInqireService/getRouteAcctoBusLcList?serviceKey=${apiKey}&cityCode=${cityCode}&routeId=${routeId}&_type=json`;
-
+    const busUrl = `http://apis.data.go.kr/1613000/BusLcInfoInqireService/getRouteAcctoBusLcList?serviceKey=${apiKey}&cityCode=${cityCode}&routeId=${routeInfo.routeId}&_type=json`
+    
     try {
         const response = await fetch(busUrl);
         const data = await response.json();
@@ -398,17 +415,161 @@ function MainScreen({ nearestStation }) {
         const items = data?.response?.body?.items?.item;
 
         if (items && Array.isArray(items)) {
-            
-            const nearestBus = items
-                .filter((item) => item.nodeord < userNodeord) // userNodeord보다 작은 값만 필터링
-                .reduce((prev, current) =>
-                    current.nodeord > prev.nodeord ? current : prev // 가장 큰 nodeord 선택
-                );
+            // userVehicleno와 일치하는 데이터 추출
+            const matchingBus = items.find(
+                (item) => item.vehicleno === userVehicleno
+            );
+
+            if (matchingBus) {
+                console.log("일치하는 버스 데이터:", matchingBus);
+                setCurrentBusNode({
+                    nodeid: matchingBus.nodeid,
+                    nodenm: matchingBus.nodenm,
+                    nodeord: matchingBus.nodeord,
+                });
+        } else {
+            console.warn("일치하는 버스를 찾을 수 없습니다.");
+        }
+    } else {
+        console.warn("조건에 맞는 데이터가 없습니다.");
+    }
+} catch (error) {
+    console.error("API 호출 실패:", error);
+}
+};
+//노선 데이터 API
+const fetchAdjacentStops = async () => {
+    const routeUrl = `http://apis.data.go.kr/1613000/BusRouteInfoInqireService/getRouteAcctoThrghSttnList?serviceKey=${apiKey}&cityCode=${cityCode}&routeId=${routeInfo.routeId}&_type=json`;
+
+    try {
+        const response = await fetch(routeUrl);
+        const data = await response.json();
+        const totalCount = data?.response?.body?.totalCount;
+        if (totalCount && totalCount > 0) {
+            const fullRouteUrl = `${routeUrl}&numOfRows=${totalCount}`;
+            const fullResponse = await fetch(fullRouteUrl);
+            const fullData = await fullResponse.json();
+
+            const items = fullData?.response?.body?.items?.item;
+            if (items && Array.isArray(items)) {
+                setCurrentBusRouteData(items);
+                return;
+            }
+        }
+    } catch (error) {
+        console.error("노선 데이터 가져오기 실패:", error);
+    }
+};
+
+  //버스와 정류장 사이 거리
+  const fetchDestinationAway = async () => {
+    try {
+      // 1. 현재 버스 위치 가져오기
+      await fetchBusLocation();
+      console.log("현재 버스 위치:", currentBusNode);
+      // 2. 전체 노선 데이터 가져오기
+      await fetchAdjacentStops();
+      // 3. 정거장 간 거리 계산
+      const currentIndex = currentBusRouteData.findIndex(
+        (stop) => stop.nodeord === currentBusNode.nodeord
+      );
+      const targetIndex = currentBusRouteData.findIndex(
+        (stop) => stop.nodeord === targetNodeord
+      );
+  
+      if (currentIndex === -1 || targetIndex === -1) {
+        throw new Error("현재 위치 또는 목표 정류장을 찾을 수 없습니다.");
+      }
+  
+      const destinationAway = Math.abs(targetIndex - currentIndex); // 정거장 차이 계산
+      console.log(
+        `${targetNode.targetNodeName} 정거장까지 ${destinationAway} 정거장 전입니다.`
+      );
+  
+      // 4. 상태 업데이트
+      setBusStopsAway(destinationAway);
+      return destinationAway;
+    } catch (error) {
+      console.error("버스 정거장 계산 실패:", error.message);
+      return null;
+    }
+  };
+
+  //버스와 정류장 사이 거리
+  const fetchBusStopsAway = async () => {
+    try {
+      // 1. 현재 버스 위치 가져오기
+      await fetchBusLocation();
+      console.log("현재 버스 위치:", currentBusNode);
+      // 2. 전체 노선 데이터 가져오기
+      await fetchAdjacentStops();
+  
+      // routeData와 currentNode 확인
+      if (!Array.isArray(currentBusRouteData)) {
+        console.error("routeData가 배열이 아닙니다. 현재 데이터:", currentBusRouteData);
+        return null;
+      }
+
+      if (!currentBusNode) {
+        console.error("현재 버스 위치(currentBusNode)가 설정되지 않았습니다.");
+        return null;
+      }
+  
+      // 3. 현재 버스의 정류장 순서(nodeord)와 유저 정류장 순서 비교
+      const busStopIndex = currentBusRouteData.findIndex((stop) => stop.nodeord === currentBusNode.nodeord);
+      const userStopIndex = currentBusRouteData.findIndex((stop) => stop.nodeord === userNodeord);
+  
+      if (busStopIndex === -1 || userStopIndex === -1) {
+        console.warn("현재 버스 위치 또는 유저 정류장을 찾을 수 없습니다.");
+        return null;
+      }
+  
+      // 4. 정거장 간 거리 계산
+      const stopsAway = userStopIndex - busStopIndex;
+      console.log(`버스는 유저 정류장에서 ${stopsAway} 정거장 전입니다.`);
+      setBusStopsAway(stopsAway);
+    } catch (error) {
+      console.error("버스 정거장 계산 실패:", error);
+      return null;
+    }
+  };
+
+  // 유저의 정류정에서 타야 할 버스 정보 찾기
+  const findTargetBusInfo = async () => {
+    const busUrl = `http://apis.data.go.kr/1613000/BusLcInfoInqireService/getRouteAcctoBusLcList?serviceKey=${apiKey}&cityCode=${cityCode}&routeId=${routeInfo.routeId}&_type=json`;
+
+    try {
+        const response = await fetch(busUrl);
+        const data = await response.json();
+
+        console.log("API 응답 데이터:", JSON.stringify(data, null, 2));
+        console.log(userNodeord);
+        const items = data?.response?.body?.items?.item;
+
+        if (items && Array.isArray(items)) {
+          const filteredItems = items.filter((item) => item.nodeord < userNodeord);
+          if (filteredItems.length === 0) {
+            console.log("조건에 맞는 버스가 없습니다.");
+            return null; // 필터 결과 없음
+          }
+    
+          // 필터링된 결과에서 가장 가까운 버스 찾기
+          const nearestBus = filteredItems.reduce((prev, current) =>
+            current.nodeord > prev.nodeord ? current : prev, filteredItems[0]);
 
             if (nearestBus) {
                 setUserVehicleno(nearestBus.vehicleno);
                 console.log("가장 근접한 버스의 vehicleno:", nearestBus.vehicleno);
-                return nearestBus.vehicleno;
+                fetchBusStopsAway();
+                if(busStopsAway>3){
+                  const message = `${routeInfo.routenm} 버스가 ${busStopsAway} 정거장 전입니다.`;
+                  Speech.speak(message, { language: "ko-KR" });
+                  return;
+                }else{
+                  const message = `${routeInfo.routenm} 버스가 잠시후 도착합니다.`;
+                  Speech.speak(message, { language: "ko-KR" });
+                  return;
+                };
             } else {
                 console.log("조건에 맞는 버스를 찾을 수 없습니다.");
                 return null;
@@ -453,64 +614,194 @@ function MainScreen({ nearestStation }) {
 
       return () => clearInterval(interval); // 컴포넌트 언마운트 시 인터벌 정리
     };
-
-    ws.onclose = () => {
-      console.log('WebSocket 연결 종료');
-    };
-
     return () => {
       if (ws) ws.close();
     };
-  }, [registration]);
+  }, []);
 
- // 하차벨 활성화 메시지 전송
- const activateBusBell = () => {
-  const ws = new WebSocket('ws://221.168.128.40:3000'); // WebSocket 서버 주소
+  // 승차 요청 메시지 전송
+  const activateGetOnBell = () => {
+    const ws = new WebSocket('ws://221.168.128.40:3000'); // WebSocket 서버 주소
 
-  ws.onopen = () => {
-    const data = {
-      type: 'activate-bell',
-      vehicleno: userVehicleno, // 버스 번호
-      destination,
+    ws.onopen = () => {
+      const data = {
+        type: 'activate-getOn-bell',
+        vehicleno: userVehicleno, // 버스 번호
+        nodeord: userNodeord, // 승차 정류장
+        firstNode: firstNode.firstNodeName,
+      };
+      ws.send(JSON.stringify(data));
+      console.log('승차 요청 메시지 전송:', data);
+      setTimeout(() => {
+        ws.close();
+      }, 100); // 100ms 대기
     };
-    ws.send(JSON.stringify(data));
-    console.log('하차벨 활성화 메시지 전송:', data);
-    ws.close();
+    ws.onerror = (error) => {
+      console.error('WebSocket 에러:', error);
+    };
+  };
+  // 승차 요청 취소
+  const removeGetOnRequest = () => {
+    const ws = new WebSocket('ws://221.168.128.40:3000'); // WebSocket 서버 주소
+    ws.onopen = () => {
+      const data = {
+        type: 'clear-specific-getOn-bell',
+        firstNode: firstNode.firstNodeName, // 제거할 요청 이름
+      };
+      ws.send(JSON.stringify(data));
+      console.log('승차 취소 메시지 전송:', data);
+      setTimeout(() => {
+        ws.close();
+      }, 100); // 100ms 대기
+    };
+      console.log('승차 요청 취소 메시지 전송:', firstNode);
   };
 
-  ws.onerror = (error) => {
-    console.error('WebSocket 에러:', error);
+  // 하차벨 활성화 메시지 전송
+  const activateGetOffBell = () => {
+    const ws = new WebSocket('ws://221.168.128.40:3000'); // WebSocket 서버 주소
+
+    ws.onopen = () => {
+      const data = {
+        type: 'activate-getOff-bell',
+        vehicleno: userVehicleno, // 버스 번호
+        targetNode: targetNode.targetNodeName,
+      };
+      ws.send(JSON.stringify(data));
+      console.log('하차 요청 메시지 전송:', data);
+      setTimeout(() => {
+        ws.close();
+      }, 100); // 100ms 대기
+    };
+
+    ws.onerror = (error) => {
+      console.error('WebSocket 에러:', error);
+    };
+
+    ws.onclose = () => {
+      console.log('WebSocket 닫힘');
+    };
   };
 
-  ws.onclose = () => {
-    console.log('WebSocket 닫힘');
+  // 현재 메시지 반복
+  const repeatMessage = () => {
+    console.log("반복 안내 실행");
+    const description = nodeRouteData?.steps?.[currentStepIndex]?.description;
+    if (description) {
+      Speech.speak(description, { language: "ko-KR" });
+    }
   };
-};
 
-
+  // WALK 단계를 다음 단계로 이동
+  const nextWalkStep = () => {
+    console.log("다음 도보 안내로 이동");
+    if (currentStepIndex < nodeRouteData.steps.length - 1) {
+      setCurrentStepIndex((prev) => prev + 1);
+    } else {
+      nextStep(); // 마지막 단계에서는 다음 메시지로 이동
+    }
+  };
 
   // 다음 메시지로 이동
   const nextStep = () => {
     setCurrentStep((prevStep) => Math.min(prevStep + 1, messages.length - 1));
   };
 
+
+  // 단계별 단일/더블 탭 동작 설정
+  const singleTapHandlers = {
+    2: repeatMessage, // currentStep === 2에서는 repeatMessage 호출
+    4: () => {
+      if (busStopsAway >= 1 && busStopsAway <= 3) {
+        activateGetOnBell;
+        nextStep(); // busStopsAway <= 3일 때 다음 단계로 이동
+      } else {
+        findTargetBusInfo(); // busStopsAway > 3일 때 버스 정보 갱신
+      }
+    },
+    5: () => {
+      removeGetOnRequest();
+      nextStep();
+    },
+    6: fetchDestinationAway,
+  };
+
+  const doubleTapHandlers = {
+    2: nextWalkStep, // currentStep === 2일 때 nextWalkStep 호출
+    4: () => {       // currentStep === 4일 때 두 함수 실행
+        activateGetOnBell();
+        nextStep();
+    },
+    5: () => {
+      removeGetOnRequest();
+      setCurrentStep(3); // 3단계로 이동
+    },
+    6: nextStep,
+  };
+
   // 메시지 리스트
   const messages = [
     { text: "목적지를 말씀해주세요.", options: [destination], useTap: false }, // 음성 인식 활성화 단계
-    { text: "가까운 정류장을 안내합니다.", options: [nearestStation], useTap: true }, 
-    { text: `${departure}에서 ${destination}까지 가는 버스는 ${routeInfo.routenm}입니다.\n안내를 시작할까요?`, options: ["맞다면 한번 탭\n아니라면 두번 탭"], useTap: false },
-    { text: `${routeInfo.routenm} 버스가 잠시후 도착합니다.`, options: [], useTap: false },
-    { text: "버스에 탑승하셨나요?", options: ["맞다면 한번 탭\n아니라면 두번 탭"], useTap: false },
-    { text: `${destination}까지 ~정거장 남았습니다.`, options: [], useTap: false },
+    { text: `${firstNode.firstNodeName} 정류장을 안내합니다.`, options: [nearestStation], useTap: true },
+    { text: Array.isArray(nodeRouteData?.steps) && currentStepIndex < nodeRouteData.steps.length
+        ? `${nodeRouteData.steps[currentStepIndex]?.description}하세요. 반복 안내는 한번, 다음 안내는 더블 탭 하십시오.`
+        : '', options: [], useTap: true},
+    { text: `${firstNode.firstNodeName}에서 ${targetNode.targetNodeName}까지 가는 버스는 ${routeInfo.routenm}입니다.\n안내를 시작할까요?`, options: ["맞다면 한번 탭\n아니라면 두번 탭"], useTap: false },
+    { text: busStopsAway !== null
+      ? `${routeInfo.routenm} 버스가 ${busStopsAway} 정거장 전입니다.`
+      : `탭하여 ${routeInfo.routenm} 버스 정보를 불러옵니다.`, options: [], useTap: true},
+    { text: "버스에 탑승하셨나요?", options: [], useTap: true },
+    { text: busStopsAway !== null
+      ? `${targetNode.targetNodeName}까지 ${busStopsAway}정거장 남았습니다.`
+      : `탭하여 ${targetNode.targetNodeName}까지 남은 정거장을 불러옵니다.`, options: [], useTap: true },
     { text: "하차 시 아래 버튼을 눌러주세요.", options: [], useTap: false }
   ];
 
   // 메시지 변경 시 TTS 실행
   useEffect(() => {
-    const message = messages[currentStep].text;
-    Speech.speak(message, { language: 'ko-KR' });
+    const message = messages[currentStep]?.text;
+    if (message) {
+      Speech.speak(message, { language: "ko-KR" });
+    }
   }, [currentStep]);
+  useEffect(() => {
+    if (currentStep === 2) {
+      const description = nodeRouteData?.steps?.[currentStepIndex]?.description;
+      if (description) {
+        Speech.speak(description, { language: "ko-KR" });
+      }
+    }
+  }, [currentStepIndex, currentStep]);
 
+
+
+  
+  // 탭 동작 핸들러
+  let tapTimeout = null;
+  const handleTap = () => {
+    if (tapTimeout) {
+      // 두 번 탭
+      clearTimeout(tapTimeout);
+      tapTimeout = null;
+      if (doubleTapHandlers[currentStep]) {
+        doubleTapHandlers[currentStep](); // 현재 단계의 이중 탭 핸들러 호출
+      } else {
+        console.log("이중 탭 동작이 정의되지 않았습니다.");
+      }
+    } else {
+      // 한 번 탭
+      tapTimeout = setTimeout(() => {
+        if (singleTapHandlers[currentStep]) {
+          singleTapHandlers[currentStep](); // 현재 단계의 단일 탭 핸들러 호출
+        } else {
+          console.log("단일 탭 동작이 정의되지 않았습니다.");
+        }
+        tapTimeout = null;
+      }, 300); // 300ms 안에 두 번 탭 시 이중 탭으로 처리
+    }
+  };
+
+ 
   // UI 렌더링
   return (
     <View style={styles.container}>
@@ -527,7 +818,7 @@ function MainScreen({ nearestStation }) {
         )}
       </View>
 
-      {/* 음성 인식 버튼 */}
+      {/* 음성 인식 버튼 (0단계) */}
       {currentStep === 0 && (
         <>
           {recognizedText && (
@@ -544,7 +835,7 @@ function MainScreen({ nearestStation }) {
           </TouchableOpacity>
         </>
       )}
-      {/* 길안내 */}
+      {/* 길안내 (1단계)(임시)*/}
       {currentStep === 1 && (
         <View>
           <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 10 }}>
@@ -575,25 +866,47 @@ function MainScreen({ nearestStation }) {
           </TouchableOpacity>
         </View>
       )}
-
-
-
-      <TouchableOpacity
-        style={styles.touchButton}
-        onPress={() => {
-          if (currentStep === messages.length - 1) {
-            console.log("완료 버튼 클릭");
-            // 완료 작업 추가 가능
-          } else {
-            nextStep();
-          }
-        }}
-      >
-        <Text style={styles.touchButtonText}>
-          {currentStep === messages.length - 1 ? "완료" : "Touch!"
-          }
-        </Text>
+      {/* 정류장 안내 (2단계)*/}
+      {currentStep === 2 && (
+        <TouchableOpacity style={styles.touchButton} onPress={handleTap}>
+          <Text style={styles.touchButtonText}>Touch!</Text>
+        </TouchableOpacity>
+      )}
+      {/* 버스와의 거리 안내 (4단계) */}
+      {currentStep === 4&& (
+      <TouchableOpacity style={styles.touchButton} onPress={handleTap}>
+        <Text style={styles.touchButtonText}>Touch!</Text>
       </TouchableOpacity>
+      )}
+      {/* 탑승 확인 (5단계) */}
+      {currentStep === 5&& (
+      <TouchableOpacity style={styles.touchButton} onPress={handleTap}>
+        <Text style={styles.touchButtonText}>Touch!</Text>
+      </TouchableOpacity>
+      )}
+      {/* 목적지까지의 거리 안내 (6단계) */}
+      {currentStep === 6&& (
+      <TouchableOpacity style={styles.touchButton} onPress={handleTap}>
+        <Text style={styles.touchButtonText}>Touch!</Text>
+      </TouchableOpacity>
+      )}
+
+      {currentStep !== 2 && currentStep !== 4 && currentStep !== 5 && currentStep !== 6 && (
+        <TouchableOpacity
+          style={styles.touchButton}
+          onPress={() => {
+            if (currentStep === messages.length - 1) {
+              activateGetOffBell();
+            } else {
+              nextStep();
+            }
+          }}
+        >
+          <Text style={styles.touchButtonText}>
+            {currentStep === messages.length - 1 ? "완료" : "Touch!"}
+          </Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
