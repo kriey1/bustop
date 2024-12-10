@@ -1,6 +1,6 @@
 {
   "expo": {
-    "scheme": "acme",
+    "scheme": "frontend",
     "newArchEnabled": true,
     "web": {
       "bundler": "metro"
@@ -13,10 +13,26 @@
     "slug": "frontend",
     "jsEngine": "jsc",
     "android": {
-      "package": "com.mycompany.busapp"
+      "package": "com.mycompany.busapp",
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
+      ]
     },
     "ios": {
-      "bundleIdentifier": "com.mycompany.busapp"
-    }
+      "bundleIdentifier": "com.mycompany.busapp",
+      "infoPlist": {
+        "NSFaceIDUsageDescription": "앱에서 생체 인증을 사용하기 위해 필요합니다."
+      }
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "beda1ddf-088d-4db8-b4aa-f514fb673aa6"
+      }
+    },
+    "owner": "sup12233"
   }
 }

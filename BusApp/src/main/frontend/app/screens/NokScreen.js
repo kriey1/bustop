@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ActivityIndicator, Alert, TouchableOpacity } fr
 import useUserStore from '../store/userStore'; // 상태 관리 경로 확인
 
 function NokScreen() {
-    const { userInfo, pin } = useUserStore();
+    const { userInfo, registration } = useUserStore();
     const [gpsData, setGpsData] = useState(null);
     const [loading, setLoading] = useState(false);
 
@@ -13,7 +13,7 @@ function NokScreen() {
 
         ws.onopen = () => {
             console.log('WebSocket 연결 성공');
-            const data = { type: 'gps-request', pin: userInfo?.pin }; // NOK와 연결된 등록번호 사용
+            const data = { type: 'gps-request', registration: userInfo?.registration }; // NOK와 연결된 등록번호 사용
             ws.send(JSON.stringify(data));
         };
 
