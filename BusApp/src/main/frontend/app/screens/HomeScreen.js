@@ -1,35 +1,53 @@
-// src/main/frontend/app/screens/HomeScreen.js
 import React from 'react';
-import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import FingerprintScanner from 'react-native-fingerprint-scanner'; // 패키지 변경
-import Sensor from '../components/Sensor';
+import { View, Text, TouchableOpacity, Image, StyleSheet, Alert } from 'react-native';
+// import AsyncStorage from '@react-native-async-storage/async-storage';
+// import FingerprintScanner from 'react-native-fingerprint-scanner'; // 패키지 변경
+// import Sensor from '../components/Sensor';
+import * as LocalAuthentication from 'expo-local-authentication'; // expo-local-authentication 추가
 
 function HomeScreen({ navigation }) {
   const handleFaceIDAuthentication = async () => {
     try {
-      await FingerprintScanner.authenticate({ description: '얼굴 인식을 진행합니다.' });
-      alert('얼굴 인식이 완료되었습니다.');
-      navigation.navigate('Main');
+      console.log('1. 생체 인증 가능 여부 확인 중...');
+      const isBiometricAvailable = await LocalAuthentication.hasHardwareAsync();
+
+      if (!isBiometricAvailable) {
+        console.log('생체 인증 하드웨어 없음');
+        Alert.alert('오류', '생체 인증이 지원되지 않는 기기입니다.');
+        return;
+      }
+
+      console.log('2. 지원되는 생체 인증 유형 확인 중...');
+      const supportedTypes = await LocalAuthentication.supportedAuthenticationTypesAsync();
+      console.log('지원되는 생체 인증 유형:', supportedTypes);
+
+      if (!supportedTypes.includes(LocalAuthentication.AuthenticationType.FACIAL_RECOGNITION)) {
+        Alert.alert('오류', 'Face ID가 지원되지 않습니다.');
+        return;
+      }
+
+      console.log('3. 생체 인증 수행 중...');
+      const result = await LocalAuthentication.authenticateAsync({
+        promptMessage: 'Face ID 또는 지문 인증을 진행합니다.',
+        cancelLabel: '취소',
+        fallbackLabel: 'PIN 사용',
+      });
+
+      console.log('4. 생체 인증 결과:', result);
+
+      if (result.success) {
+        console.log('생체 인증 성공');
+        Alert.alert('성공', '인증이 완료되었습니다.');
+        navigation.navigate('Main'); // 인증 성공 시 MainScreen으로 이동
+      } else {
+        console.log('생체 인증 실패');
+        Alert.alert('실패', 'Face ID 인증에 실패했습니다.');
+      }
     } catch (error) {
-      alert('Face ID 인증에 실패했습니다.');
-    } finally {
-      FingerprintScanner.release();
+      console.error('Face ID 인증 오류:', error);
+      Alert.alert('오류', 'Face ID 인증 중 문제가 발생했습니다. 오류: ' + error.message);
     }
   };
-
-  // const checkRegistration = async () => {
-  //   try {
-  //     const userPin = await AsyncStorage.getItem('userPin'); // 6자리 PIN 확인
-  //     if (userPin) {
-  //       navigation.replace('Main'); // 번호가 있으면 메인 화면으로 이동
-  //     } else {
-  //       navigation.replace('UserSignupScreen'); // 번호가 없으면 회원가입 화면으로 이동
-  //     }
-  //   } catch (error) {
-  //     console.error('Error checking user registration:', error);
-  //   }
-  // };
 
   return (
     <View style={styles.container}>
@@ -41,6 +59,11 @@ function HomeScreen({ navigation }) {
         <Text style={styles.loginButtonText}>로그인</Text>
       </TouchableOpacity>
 
+      {/* 운전자 화면 버튼 */}
+      <TouchableOpacity style={styles.driverButton} onPress={() => navigation.navigate('BusDriverScreen')}>
+        <Text style={styles.driverButtonText}>운전자 화면</Text>
+      </TouchableOpacity>
+
       {/* 회원가입 버튼 */}
       <TouchableOpacity onPress={() => navigation.navigate('SignupScreen')}>
         <Text style={styles.signupText}>회원가입</Text>
@@ -49,10 +72,9 @@ function HomeScreen({ navigation }) {
       {/* 버스 이미지와 "Touch!" 텍스트 */}
       <View style={styles.touchContainer}>
         <Image source={require('../screens/image/bus.png')} style={styles.busImage} />
-        
-        {/* Touch 버튼을 눌렀을 때 checkRegistration 진행 */}
-        {/* <TouchableOpacity onPress={checkRegistration}> */}
-        <TouchableOpacity onPress={() => navigation.navigate('Main')}>
+
+        {/* Touch 버튼을 눌렀을 때 Face ID 인증 후 MainScreen으로 이동 */}
+        <TouchableOpacity onPress={handleFaceIDAuthentication}>
           <Text style={styles.touchText}>Touch!</Text>
         </TouchableOpacity>
 
@@ -92,6 +114,17 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#333',
   },
+  driverButton: {
+    backgroundColor: '#ADD8E6', // 연한 파란색 배경
+    paddingVertical: 15,
+    paddingHorizontal: 50,
+    borderRadius: 10,
+    marginVertical: 10,
+  },
+  driverButtonText: {
+    fontSize: 18,
+    color: '#fff',
+  },
   signupText: {
     fontSize: 16,
     color: '#333',
@@ -115,5 +148,6 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 30,
     borderRadius: 50,
+    marginVertical: 5,
   },
 });
