@@ -1,0 +1,11 @@
+{
+  "build": {
+    "production": {
+      "ios": {
+        "entitlements": {
+          "com.apple.developer.biometric-access": true
+        }
+      }
+    }
+  }
+}

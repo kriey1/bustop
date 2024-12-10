@@ -10,7 +10,7 @@ import SignupdrScreen from './screens/SignupdrScreen';
 import SignupgrScreen from './screens/SignupgrScreen';
 import DestinationSearchingScreen from './screens/navigation/DestinationSearchingScreen'
 import NavigateStartScreen from './screens/navigation/NavigateStartScreen'
-import BusDriverScreen from './screens/BusDriverScreen';
+import BusDriverScreen from './screens/BusDriverScreen'
 import NokScreen from './screens/NokScreen';
 
 const Stack = createNativeStackNavigator();
