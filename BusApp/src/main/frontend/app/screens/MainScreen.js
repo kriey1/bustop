@@ -1,12 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { GestureHandlerRootView, PanGestureHandler } from 'react-native-gesture-handler'; // 제스처 핸들러
-import { Audio } from 'expo-av';
-import * as FileSystem from 'expo-file-system';
-import * as Speech from 'expo-speech';
 import axios from 'axios';
 import useUserStore from '../store/userStore';
-import * as Location from 'expo-location';
+import { Audio } from 'expo-av'; // 오디오 녹음
+import * as FileSystem from 'expo-file-system'; // 파일 시스템
+import * as Speech from 'expo-speech'; // TTS
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Location from 'expo-location'; // 위치정보
+
+// Whisper 서버 URL
+// 로컬 환경에서 iOS 시뮬레이터를 사용할 경우 "http://localhost:5001"를 그대로 사용하세요.
+// 실제 기기를 사용할 경우 서버가 실행 중인 컴퓨터의 IP 주소로 변경해야 합니다.
+const WHISPER_SERVER_URL = "http://172.17.7.186:5001/transcribe"; // YOUR_LOCAL_IP를 컴퓨터 IP 주소로 변경
 
 function MainScreen({ nearestStation }) {
   const [recording, setRecording] = useState();
