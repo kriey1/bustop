@@ -39,6 +39,72 @@ app.get('/search', async (req, res) => {
     res.status(500).json({ message: 'DB 검색 오류 발생' });
   }
 });
+app.post("/compare-city", async (req, res) => {
+  const { city_do, gu_gun } = req.body;
+
+  // 받은 데이터 로그
+  console.log("받은 주소:", { city_do, gu_gun });
+
+  // 데이터 유효성 검사
+  if (!city_do || !gu_gun) {
+    return res.status(400).json({ error: "도시 정보가 제공되지 않았습니다." });
+  }
+
+  let conn;
+  try {
+    // MariaDB 연결 가져오기
+    conn = await pool.getConnection();
+
+    // gu_gun 대조
+    const guGunQuery = "SELECT cityCode FROM cities WHERE cityName = ?";
+    const guGunResult = await conn.query(guGunQuery, [gu_gun]);
+
+    if (guGunResult.length > 0) {
+      // gu_gun 매칭
+      const cityCode = guGunResult[0].cityCode;
+      console.log(`gu_gun '${gu_gun}'과 일치하는 데이터 발견: cityCode=${cityCode}`);
+      return res.json({
+        gu_gun_match: true,
+        city_do_match: false,
+        cityCode,
+        message: `${gu_gun}와 일치하는 데이터가 있습니다.`,
+      });
+    }
+
+    // gu_gun이 없으면 city_do 대조
+    const cityDoQuery = "SELECT cityCode FROM cities WHERE cityName = ?";
+    const cityDoResult = await conn.query(cityDoQuery, [city_do]);
+
+    if (cityDoResult.length > 0) {
+      // city_do 매칭
+      const cityCode = cityDoResult[0].cityCode;
+      console.log(`city_do '${city_do}'과 일치하는 데이터 발견: cityCode=${cityCode}`);
+      return res.json({
+        gu_gun_match: false,
+        city_do_match: true,
+        cityCode,
+        message: `${city_do}와 일치하는 데이터가 있습니다.`,
+      });
+    }
+
+    // 일치하지 않는 경우
+    console.log(`요청 데이터와 DB가 일치하지 않음: city_do='${city_do}', gu_gun='${gu_gun}'`);
+    return res.json({
+      gu_gun_match: false,
+      city_do_match: false,
+      cityCode: null,
+      message: "일치하는 데이터가 없습니다.",
+    });
+  } catch (error) {
+    console.error("MariaDB 요청 처리 중 오류 발생:", error);
+    return res.status(500).json({ error: "서버 오류 발생" });
+  } finally {
+    // MariaDB 연결 해제
+    if (conn) conn.release();
+  }
+});
+
+
 
 // 유저 회원가입, PIN 번호
 app.post('/signup-user', async (req, res) => {

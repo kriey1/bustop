@@ -7,6 +7,7 @@ import axios from 'axios'; // HTTP 요청
 import useUserStore from '../store/userStore'; //유저정보
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location'; // 위치정보
+import { parseStringPromise } from "xml2js";
 
 // Whisper 서버 URL
 // 로컬 환경에서 iOS 시뮬레이터를 사용할 경우 "http://localhost:5001"를 그대로 사용하세요.
@@ -20,15 +21,17 @@ function MainScreen({ nearestStation }) {
   const [isListening, setIsListening] = useState(false); // 음성 인식 상태
   const { userInfo, registration } = useUserStore(); //유저 로그인 정보
   const [departure, setDeparture] = useState('현재위치'); // 출발지
-  const [departureCoords, setDepartureCoords] = useState({latitude: 36.27924625576773, longitude: 127.24592127929606,});
+  const [departureCoords, setDepartureCoords] = useState({latitude: 37.371934, longitude: 126.932986,});
   const [destination, setDestination] = useState('군포시장애인복지관'); //목적지
-  const [destinationCoords, setDestinationCoords] = useState({latitude: 37.3626159427669, longitude: 126.93294757362182,});
+  const [destinationCoords, setDestinationCoords] = useState({latitude: 37.3626159427669, longitude: 126.93294757362182,});;
+  //({latitude: 36.796287, longitude: 127.126934,});
+  //({latitude: 37.3626159427669, longitude: 126.93294757362182,});
   const [routeData, setRouteData] = useState(null); //경로
   const [nodeRouteData, setNodeRouteData] = useState(null); //출발 정류장으로 가는 경로
   const [currentStepIndex, setCurrentStepIndex] = useState(0);//경로 안내단계
-  const [firstNode, setFirstNode] = useState({firstNodeName:'stationName', latitude:'lat', longitude:'lon'}); //출발 정류장
-  const [targetNode, setTargetNode] = useState({targetNodeName:'stationName', latitude:'lat', longitude:'lon'}); //도착 정류장
-  const cityCode = '31160';
+  const [firstNode, setFirstNode] = useState({firstNodeName:'stationName', latitude:'37.371934', longitude:'126.932986'}); //출발 정류장
+  const [targetNode, setTargetNode] = useState({targetNodeName:'stationName', latitude:'37.355788', longitude:'126.915756'}); //도착 정류장
+  const [cityInfo, setCityInfo]= useState({cityCode:'31160', city_do:'경기도', gu_gun:'군포시'});
   const [routeInfo, setRouteInfo] = useState({routenm:'', routeId:''});
   const [userVehicleno, setUserVehicleno] = useState(''); // 탑승할 버스 번호
   const [userNodeord, setUserNodeord] = useState(null); // 유저가 출발 정류소
@@ -36,6 +39,7 @@ function MainScreen({ nearestStation }) {
   const [busStopsAway, setBusStopsAway] = useState(null); // 몇 정거장 전인지 상태 관리
   const [currentBusNode, setCurrentBusNode] = useState(null);
   const [currentBusRouteData, setCurrentBusRouteData] = useState(null);
+  const [isGyeonggiNodeFound, setIsGyeonggiNodeFound] = useState(false); // 경기 버스 API 실행 여부 플래그
   const apiKey = 'cjPl5Q0WfmVlbYWXDsTQgOg8KD%2F5R5IMPY4Ft%2Fz%2Bt6FY1NQb2kpRB5PHzkRZsgrSDKDPlSvL0H%2BglmFVN36OBA%3D%3D'
   const TMAP_API_KEY = "iORUqRFjtu9JfkUGPMpg040iu3hXCvyS5icJo7kO";
 
@@ -58,16 +62,19 @@ function MainScreen({ nearestStation }) {
       }
   
       if (!cachedPin) {
-        console.error('PIN 정보가 없습니다.');
+        console.error('PIN 정보가 없습니다.');  
         return;
       }
   
       console.log('캐싱된 PIN:', cachedPin);
     };
-  
     loadPin();
   }, []);
-
+  // 컴포넌트가 처음 마운트될 때 현재 위치 가져오기
+  useEffect(() => {
+    fetchCurrentLocation();
+  }, [cachedPin]);
+  
    // 현재 위치 가져오기
    const fetchCurrentLocation = async () => {
     try {
@@ -77,22 +84,96 @@ function MainScreen({ nearestStation }) {
         return;
       }
       const location = await Location.getCurrentPositionAsync({});
-      setDepartureCoords({
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
-      });
+      const startLatitude = location.coords.latitude;
+      const startLongitude = location.coords.longitude;
+      setDepartureCoords({ latitude: startLatitude, longitude: startLongitude });
       console.log("현재 위치:", location.coords);
+      await reverseGeo(startLatitude, startLongitude);
+      console.log("도시 설정 완료", cityInfo);
+      return;
     } catch (error) {
       console.error("현재 위치 가져오기 실패:", error);
     }
   };
 
-  // 컴포넌트가 처음 마운트될 때 현재 위치 가져오기
-  useEffect(() => {
-    fetchCurrentLocation();
-  }, []);
+  // Reverse Geocoding 함수
+  const reverseGeo = async (startLatitude, startLongitude) => {
+    const latitude = startLatitude;
+    const longitude = startLongitude;
+    const url = `https://apis.openapi.sk.com/tmap/geo/reversegeocoding?version=1&format=json&callback=result&coordType=WGS84GEO&addressType=A10&lon=${longitude}&lat=${latitude}`;
 
+    try {
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+        appKey: TMAP_API_KEY,
+        },
+      });
 
+      if (!response.ok) {
+        throw new Error(`HTTP Error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const addressInfo = data.addressInfo;
+
+      if (!addressInfo) {
+        throw new Error("주소 정보가 없습니다.");
+      }
+      
+      // 새주소 생성
+      let newRoadAddr = `${addressInfo.city_do} ${addressInfo.gu_gun}`.trim();
+      newRoadAddr =  {
+        city_do: "경기도", //addressInfo.city_do,
+        gu_gun: "군포시", //addressInfo.gu_gun,
+      };
+      console.log("주소", newRoadAddr);
+      /*setCityInfo((prevInfo) => ({
+        ...prevInfo, // 기존 객체 유지
+        city_do: newRoadAddr.city_do,
+        gu_gun: newRoadAddr.gu_gun,
+      }));*/
+      await compareCityWithDB(newRoadAddr);
+      return;
+    } catch (error) {
+      console.error("Reverse Geocoding 실패:", error);
+      return null;
+    }
+  };
+  const compareCityWithDB = async (newRoadAddr) => {
+    try {
+      // 서버 요청
+      const response = await fetch("http://221.168.128.40:3000/compare-city", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(newRoadAddr),
+      });
+  
+      const result = await response.json();
+  
+      if (result.gu_gun_match) {
+        console.log(`${newRoadAddr.gu_gun}와 DB의 항목이 일치합니다.${result.cityCode}`);
+        setCityInfo((prevInfo) => ({
+          ...prevInfo, // 기존 객체 유지
+          cityCode: result.cityCode, // cityCode만 업데이트
+        }));
+        return;
+      } else if (result.city_do_match) {
+        console.log(`${newRoadAddr.city_do}와 DB의 항목이 일치합니다.${result.cityCode}`);
+        setCityInfo((prevInfo) => ({
+          ...prevInfo, // 기존 객체 유지
+          cityCode: result.cityCode, // cityCode만 업데이트
+        }));
+        return;
+      } else {
+        console.log(`DB에 일치하는 항목이 없습니다.`);
+      }
+    } catch (error) {
+      console.error("도시 대조 중 오류 발생:", error);
+    }
+  };
 
 
   // Whisper 서버 호출하여 STT 실행
@@ -172,8 +253,10 @@ function MainScreen({ nearestStation }) {
       }
     }
   };
+  
+  
 
-  // Tmap POI로 목적지 검색
+  // Tmap POI API로 목적지의 좌표 검색 ( TMAP 대중교통 API의 경로 탐색 용 )
   const searchPOI = async (keyword) => {
     try {
       const response = await fetch(
@@ -197,9 +280,9 @@ function MainScreen({ nearestStation }) {
     } catch (error) {
       console.error("POI 검색 중 오류 발생:", error);
     }
-  };
+  };  
   
-  // 목적지까지 경로 요청
+  // 현재 위치에서 목적지까지의 경로 요청 ( TMAP 대중교통 API )
   const requestRoute = async () => {
     if (!departureCoords.latitude || !departureCoords.longitude) {
       alert('현재 위치를 가져올 수 없습니다.');
@@ -216,8 +299,8 @@ function MainScreen({ nearestStation }) {
         },
         body: JSON.stringify({
           version: 1,
-          startX: parseFloat(departureCoords.longitude),
-          startY: parseFloat(departureCoords.latitude),
+          startX: "126.932986",//parseFloat(departureCoords.longitude),
+          startY: "37.371934",  //parseFloat(departureCoords.latitude),
           endX: parseFloat(destinationCoords.longitude),
           endY: parseFloat(destinationCoords.latitude),
           startName: '출발지',
@@ -230,12 +313,16 @@ function MainScreen({ nearestStation }) {
       const data = await response.json();
       setRouteData(data);
       console.log("경로정보:", data);
-      extractLegDetails(routeData);
     } catch (error) {
       Alert.alert('경로 요청 오류.', error.message);
     }
   };
-  //첫번째 경로
+  useEffect(() => {
+    if (routeData) {
+      extractLegDetails(routeData);
+    }
+  }, [routeData]);
+  //추천 경로 목록 중 첫번째 경로 선택
   const extractLegDetails = (routeData) => {
     if (
       !routeData ||
@@ -256,7 +343,7 @@ function MainScreen({ nearestStation }) {
       return [];
     }
   
-    // WALK 구간에서 첫 번째 인덱스 데이터 추출
+    // WALK 구간에서 첫 번째 인덱스 데이터 추출 ( 도보 -> 정류장 정보 )
     const firstWalkingLeg = legs.find((leg) => leg.mode === "WALK");
 
     if (firstWalkingLeg) {
@@ -265,10 +352,11 @@ function MainScreen({ nearestStation }) {
       console.log("WALK 구간 정보:", { steps });
     }
 
-    // BUS 구간만 필터링하고 추가 정보 추출
+    // BUS 구간만 필터링하고 추가 정보 추출 ( 출발 정류장, 도착 정류장 정보 )
     const busLegDetails = legs
       .filter((leg) => leg.mode === "BUS") // BUS인 구간만 필터링
       .map((leg) => {
+        const originalRoute = leg.route || null;
         const routeNumber = leg.route ? leg.route.match(/\d+/)?.[0] || null : null; // route에서 숫자 추출
         return{
         end: leg.end, // 도착지 정보
@@ -276,6 +364,7 @@ function MainScreen({ nearestStation }) {
         passStopList: leg.passStopList || null, // 정류장 목록
         route: leg.route || null, // 노선 정보
         routeNumber,
+        originalRoute
         };
       });
       if (busLegDetails.length > 0) {
@@ -289,32 +378,40 @@ function MainScreen({ nearestStation }) {
         }
       } 
       console.log("추출된 BUS 노선 정보:", busLegDetails);
-      // BUS 구간의 routeNumber 출력
+      // 타야 할 버스의 노선 번호 추출
       busLegDetails.forEach((leg, index) => {
         console.log(`BUS 인덱스 ${index}의 routeNumber:`, leg.routeNumber);
         getRouteNoList(leg.routeNumber);
       });
       };
 
-    // 정류장 이름을 ID로 변환
+    // 추출된 버스 노선 번호로 노선 정보 요청 ( TAGO API 검색을 위해 버스 노선 번호를 버스 노선 ID로 변환)
     const getRouteNoList = async (routeNumber) => {
-      const routeUrl = `http://apis.data.go.kr/1613000/BusRouteInfoInqireService/getRouteNoList?serviceKey=${apiKey}&cityCode=${cityCode}&routeNo=${routeNumber}&_type=json`;
+      const routeUrl = `http://apis.data.go.kr/1613000/BusRouteInfoInqireService/getRouteNoList?serviceKey=${apiKey}&cityCode=${cityInfo.cityCode}&routeNo=${routeNumber}&_type=json`;
       try {
-        const response = await fetch(routeUrl);
-        const data = await response.json();
-        console.log("API 응답 데이터:", data);
+        let response = await fetch(routeUrl);
+        let data = await response.json();
+        console.log("TAGO API 응답 데이터:", data);
         // 유효성 검사
         if (!data || !data.response || !data.response.body || !data.response.body.items) {
-          console.error("유효하지 않은 응답 데이터:", data);
-          return null;
+          console.error("도시 노선으로 재 검색");
+          getCityRouteList(routeNumber);
         }
-    
-        const items = data.response.body.items.item;
-    
+
+        let items = data.response.body.items.item;
+
         // 단일 객체가 반환될 수도 있고 배열이 반환될 수도 있음
         const routeList = Array.isArray(items) ? items : [items];
-    
-        // 노선 데이터에서 필요한 정보 추출
+
+        // `routeno`가 `routeNumber`와 일치하는지 확인
+        const matchingRoute = routeList.find(route => route.routeno === routeNumber);
+        
+        // 마을 버스의 경우 탐색 실패, 경기도 버스 API로 재 탐색
+        if (!matchingRoute) {
+          getCityRouteList(routeNumber);
+        }
+        
+        // 노선 데이터에서 노선 이름과 ID 추출 ( TAGO API 검색 용 )
         const routeDetails = routeList.map((route) => ({
           routenm: route.routeno,
           routeId: route.routeid,
@@ -328,16 +425,107 @@ function MainScreen({ nearestStation }) {
         } else {
           console.warn("추출된 노선 정보가 비어 있습니다.");
         }
-        findFirstNode();
         console.log("findFirstNode 호출 완료");
       } catch (error) {
-        console.error("노선 데이터를 가져오는 중 오류 발생:", error);
       }
     };
+    //마을 버스의 경우 경기와 서울 버스 API로 재검색
+    const getCityRouteList = async (routeNumber) => {
+      if(cityInfo.city_do = "경기도"){
+        const gyeonggiRouteUrl = `http://apis.data.go.kr/6410000/busrouteservice/getBusRouteList?serviceKey=${apiKey}&keyword=${routeNumber}`;
 
-  //유저의 정류장 정보
+        try {
+          const response = await fetch(gyeonggiRouteUrl);
+          // 응답 상태 확인
+          if (!response.ok) {
+            console.error("경기 버스 노선 API 오류 발생:", response.status);
+            return;
+          }
+
+          // XML 데이터를 문자열로 가져오기
+          const xmlText = await response.text();
+          // XML 데이터를 JSON으로 파싱
+          const jsonData = await parseStringPromise(xmlText, {
+            explicitArray: false, // 배열을 자동으로 감싸지 않음
+            trim: true,          // 텍스트에서 불필요한 공백 제거
+          });
+
+          // `busRouteList` 데이터 가져오기
+          const busRoutes = jsonData?.response?.msgBody?.busRouteList || [];
+
+          // 데이터가 배열이 아니면 배열로 변환
+          const routesArray = Array.isArray(busRoutes) ? busRoutes : [busRoutes];
+
+          // 조건에 맞는 데이터 필터링
+          const targetRouteName = routeNumber;
+          const targetRegion = cityInfo.gu_gun.slice(0, -1);
+          const filteredRoutes = routesArray.filter(
+            (route) =>
+              route.routeName === targetRouteName &&
+              route.regionName.includes(targetRegion)
+          );
+          // 첫 번째 데이터에서 필요한 값 추출 및 설정
+          if (filteredRoutes.length > 0) {
+            const gyeonggiRoute = filteredRoutes[0];
+            console.log("Route 정보:", gyeonggiRoute);
+            await findFirstNodeGyeonggi(gyeonggiRoute);
+          } else {
+            console.warn("필터링된 데이터가 없습니다.");
+          }
+        } catch (error) {
+          console.error("API 요청 또는 XML 파싱 중 오류 발생:", error);
+          return [];
+        }
+      } else if (cityInfo.city_do === "서울특별시") {
+        const seoulRouteUrl = `http://apis.data.go.kr/6410000/busrouteservice/getBusRouteList?serviceKey=${apiKey}&keyword=${routeNumber}`;
+    
+        try {
+          const response = await fetch(seoulRouteUrl);
+          const data = await response.json();
+          console.log("서울 특별시 API 응답 데이터:", data);
+    
+          // 유효성 검사
+          if (!data || !data.response || !data.response.body || !data.response.body.items) {
+            console.error("유효하지 않은 응답 데이터");
+            return null;
+          }
+    
+          const items = Array.isArray(data.response.body.items)
+            ? data.response.body.items
+            : [data.response.body.items]; // 단일 객체 처리
+    
+          // 조건: routeName === routeNumber && regionName.includes(cityInfo.city_do)
+          const matchingRoute = items.find(
+            (item) =>
+              item.routeName === routeNumber &&
+              item.regionName.includes(cityInfo.city_do)
+          );
+    
+          if (matchingRoute) {
+            console.log("일치하는 서울 특별시 노선 정보:", matchingRoute);
+            return matchingRoute;
+          } else {
+            console.warn("일치하는 서울 특별시 노선을 찾을 수 없습니다.");
+            return null;
+          }
+        } catch (error) {
+          console.error("서울 특별시 API 요청 중 오류 발생:", error);
+          return null;
+        }
+      } else {
+        console.log("지원하지 않는 도시");
+        return null;
+      }
+    };
+    useEffect(() => {
+      if (routeInfo && routeInfo.routeId) {
+        findFirstNode();
+      }
+    }, [routeInfo]);
+
+  //유저의 출발 정류장 탐색 ( TAGO API )
   const findFirstNode = async () => {
-    const routeUrl = `http://apis.data.go.kr/1613000/BusRouteInfoInqireService/getRouteAcctoThrghSttnList?serviceKey=${apiKey}&cityCode=${cityCode}&routeId=${routeInfo.routeId}&_type=json`;
+    const routeUrl = `http://apis.data.go.kr/1613000/BusRouteInfoInqireService/getRouteAcctoThrghSttnList?serviceKey=${apiKey}&cityCode=${cityInfo.cityCode}&routeId=${routeInfo.routeId}&_type=json`;
     const firstNodeName = firstNode.firstNodeName;
     const targetNodeName = targetNode.targetNodeName;
 
@@ -401,46 +589,132 @@ function MainScreen({ nearestStation }) {
             console.error("노선 데이터 가져오기 실패:", error);
           }
   };
-
-  //버스 위치 정보
-  const fetchBusLocation = async () => {
-    const busUrl = `http://apis.data.go.kr/1613000/BusLcInfoInqireService/getRouteAcctoBusLcList?serviceKey=${apiKey}&cityCode=${cityCode}&routeId=${routeInfo.routeId}&_type=json`
-    
-    try {
-        const response = await fetch(busUrl);
-        const data = await response.json();
-
-        console.log("API 응답 데이터:", JSON.stringify(data, null, 2));
-
-        const items = data?.response?.body?.items?.item;
-
-        if (items && Array.isArray(items)) {
-            // userVehicleno와 일치하는 데이터 추출
-            const matchingBus = items.find(
-                (item) => item.vehicleno === userVehicleno
-            );
-
-            if (matchingBus) {
-                console.log("일치하는 버스 데이터:", matchingBus);
-                setCurrentBusNode({
-                    nodeid: matchingBus.nodeid,
-                    nodenm: matchingBus.nodenm,
-                    nodeord: matchingBus.nodeord,
-                });
-        } else {
-            console.warn("일치하는 버스를 찾을 수 없습니다.");
+  //경기도 노선에서 유저의 출발 정류장 탐색 ( TAGO API 미지원 버스 노선의 경우 )
+  const findFirstNodeGyeonggi = async (gyeonggiRoute) => {
+      const gyeonggiRouteUrl = `http://apis.data.go.kr/6410000/busrouteservice/getBusRouteStationList?serviceKey=${apiKey}&routeId=${gyeonggiRoute.routeId}`;
+      try {
+        const response = await fetch(gyeonggiRouteUrl);
+        // 응답 상태 확인
+        if (!response.ok) {
+          console.error("경기 버스 노선 API 오류 발생:", response.status);
+          return;
         }
-    } else {
-        console.warn("조건에 맞는 데이터가 없습니다.");
-    }
-} catch (error) {
-    console.error("API 호출 실패:", error);
-}
-};
-//노선 데이터 API
-const fetchAdjacentStops = async () => {
-    const routeUrl = `http://apis.data.go.kr/1613000/BusRouteInfoInqireService/getRouteAcctoThrghSttnList?serviceKey=${apiKey}&cityCode=${cityCode}&routeId=${routeInfo.routeId}&_type=json`;
 
+        // XML 데이터를 문자열로 가져오기
+        const xmlText = await response.text();
+        // XML 데이터를 JSON으로 파싱
+        const jsonData = await parseStringPromise(xmlText, {
+          explicitArray: false, // 배열을 자동으로 감싸지 않음
+          trim: true,          // 텍스트에서 불필요한 공백 제거
+        });
+
+        // `busRouteStationList` 데이터 가져오기
+        const busRoutesStation = jsonData?.response?.msgBody?.busRouteStationList || [];
+ 
+        // `firstNodeName`에 해당하는 모든 정류장
+        const firstNodeMatches = busRoutesStation.filter((station) =>
+          station.stationName.includes(firstNode.firstNodeName)
+        );
+
+        // `targetNodeName`에 해당하는 모든 정류장
+        const targetNodeMatches = busRoutesStation.filter((station) =>
+          station.stationName.includes(targetNode.targetNodeName)
+        );
+        console.log("경기도 버스 노선", busRoutesStation);
+        // 두 정류장의 `stationSeq` 차이를 계산하여 가장 가까운 조합 찾기
+        let closestPair = null;
+        let minDistance = Infinity;
+
+        firstNodeMatches.forEach((firstStation) => {
+          targetNodeMatches.forEach((targetStation) => {
+            const distance = Math.abs(parseInt(firstStation.stationSeq) - parseInt(targetStation.stationSeq));
+            if (distance < minDistance) {
+              minDistance = distance;
+              closestPair = { firstStation, targetStation };
+            }
+          });
+        });
+
+        if (closestPair) {
+          setUserNodeord(closestPair.firstStation.stationSeq);
+          setTargetNodeord(closestPair.targetStation.stationSeq);
+          setIsGyeonggiNodeFound(true);
+          console.log("가장 가까운 조합:", closestPair);
+        } else {
+          setIsGyeonggiNodeFound(false);
+          console.warn("조건에 맞는 경기도 정류장을 찾을 수 없습니다.");
+        }
+    } catch (error) {
+      console.error("경기 버스 노선 API 요청 또는 XML 파싱 중 오류 발생:", error);
+      return null;
+    }
+  };
+
+  //노선 내 버스들의 위치 정보 ( 출발 정류장에서 가장 가까운 버스 탐색 용 )
+  const fetchBusLocation = async (gyeonggiRoute) => {
+    if (isGyeonggiNodeFound){
+      const busUrl = `http://apis.data.go.kr/6410000/buslocationservice/getBusLocationList?serviceKey=${apiKey}&routeId=${gyeonggiRoute.routeId}`
+      try {
+        const response = await fetch(busUrl);
+        // 응답 상태 확인
+        if (!response.ok) {
+          console.error("경기 버스 노선 API 오류 발생:", response.status);
+          return;
+        }
+
+        // XML 데이터를 문자열로 가져오기
+        const xmlText = await response.text();
+        // XML 데이터를 JSON으로 파싱
+        const jsonData = await parseStringPromise(xmlText, {
+          explicitArray: false, // 배열을 자동으로 감싸지 않음
+          trim: true,          // 텍스트에서 불필요한 공백 제거
+        });
+        // `getBusLocationList` 데이터 가져오기
+        const busLocationList = jsonData?.response?.msgBody?.busLocationList || [];
+        console.log(busLocationList); // 여기서부터 작업 중
+      } catch (error) {
+        console.error("경기 버스 위치 API 요청 또는 XML 파싱 중 오류 발생:", error);
+        return null;
+      }
+
+    } else {
+      const busUrl = `http://apis.data.go.kr/1613000/BusLcInfoInqireService/getRouteAcctoBusLcList?serviceKey=${apiKey}&cityCode=${cityInfo.cityCode}&routeId=${routeInfo.routeId}&_type=json`
+      try {
+          const response = await fetch(busUrl);
+          const data = await response.json();
+
+          console.log("API 응답 데이터:", JSON.stringify(data, null, 2));
+
+          const items = data?.response?.body?.items?.item;
+
+          if (items && Array.isArray(items)) {
+              // userVehicleno와 일치하는 데이터 추출
+              const matchingBus = items.find(
+                  (item) => item.vehicleno === userVehicleno
+              );
+
+              if (matchingBus) {
+                  console.log("일치하는 버스 데이터:", matchingBus);
+                  setCurrentBusNode({
+                      nodeid: matchingBus.nodeid,
+                      nodenm: matchingBus.nodenm,
+                      nodeord: matchingBus.nodeord,
+                  });
+              } else {
+                  console.warn("일치하는 버스를 찾을 수 없습니다.");
+              }
+          } else {
+              console.warn("조건에 맞는 데이터가 없습니다.");
+          }
+      } catch (error) {
+          console.error("API 호출 실패:", error);
+      }
+    }
+};
+//탑승할 버스 노선에서 출발, 도착 정류장 탐색 ( 순환 및 상, 하행 노선의 중복 정보에서 알맞은 노드 추출 )
+const fetchAdjacentStops = async () => {
+    const routeUrl = `http://apis.data.go.kr/1613000/BusRouteInfoInqireService/getRouteAcctoThrghSttnList?serviceKey=${apiKey}&cityCode=${cityInfo.cityCode}&routeId=${routeInfo.routeId}&_type=json`;
+    
     try {
         const response = await fetch(routeUrl);
         const data = await response.json();
@@ -461,7 +735,7 @@ const fetchAdjacentStops = async () => {
     }
 };
 
-  //버스와 정류장 사이 거리
+  //탑승한 버스와 도착 정류장 사이 거리 ( 하차 정류장 알림 용 )
   const fetchDestinationAway = async () => {
     try {
       // 1. 현재 버스 위치 가져오기
@@ -495,7 +769,7 @@ const fetchAdjacentStops = async () => {
     }
   };
 
-  //버스와 정류장 사이 거리
+  //다가오는 버스와 출발 정류장 사이 거리 ( 버스 도착 알림 용 )
   const fetchBusStopsAway = async () => {
     try {
       // 1. 현재 버스 위치 가져오기
@@ -534,16 +808,16 @@ const fetchAdjacentStops = async () => {
     }
   };
 
-  // 유저의 정류정에서 타야 할 버스 정보 찾기
+  // 유저의 정류장에서 타야 할 버스의 차량 번호 찾기 (승,하차 요청 용)
   const findTargetBusInfo = async () => {
-    const busUrl = `http://apis.data.go.kr/1613000/BusLcInfoInqireService/getRouteAcctoBusLcList?serviceKey=${apiKey}&cityCode=${cityCode}&routeId=${routeInfo.routeId}&_type=json`;
+    const busUrl = `http://apis.data.go.kr/1613000/BusLcInfoInqireService/getRouteAcctoBusLcList?serviceKey=${apiKey}&cityCode=${cityInfo.cityCode}&routeId=${routeInfo.routeId}&_type=json`;
 
     try {
         const response = await fetch(busUrl);
         const data = await response.json();
 
         console.log("API 응답 데이터:", JSON.stringify(data, null, 2));
-        console.log(userNodeord);
+        console.log("유저 노드", userNodeord);
         const items = data?.response?.body?.items?.item;
 
         if (items && Array.isArray(items)) {
