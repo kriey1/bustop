@@ -22,7 +22,7 @@ function MainScreen({ nearestStation }) {
   const { userInfo, registration } = useUserStore(); //유저 로그인 정보
   const [departure, setDeparture] = useState('현재위치'); // 출발지
   const [departureCoords, setDepartureCoords] = useState({latitude: 37.371934, longitude: 126.932986,});
-  const [destination, setDestination] = useState('군포시장애인복지관'); //목적지
+  const [destination, setDestination] = useState(''); //목적지
   const [destinationCoords, setDestinationCoords] = useState({latitude: 37.3626159427669, longitude: 126.93294757362182,});;
   //({latitude: 36.796287, longitude: 127.126934,});
   //({latitude: 37.3626159427669, longitude: 126.93294757362182,});
@@ -75,7 +75,7 @@ function MainScreen({ nearestStation }) {
     fetchCurrentLocation();
   }, [cachedPin]);
   
-   // 현재 위치 가져오기
+   // 사용자의 현재 GPS 정보 가져오기
    const fetchCurrentLocation = async () => {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
@@ -96,7 +96,7 @@ function MainScreen({ nearestStation }) {
     }
   };
 
-  // Reverse Geocoding 함수
+  // TMAP Reverse Geo API( 사용자의 GPS 정보로 주소 가져오기 )
   const reverseGeo = async (startLatitude, startLongitude) => {
     const latitude = startLatitude;
     const longitude = startLongitude;
@@ -140,6 +140,7 @@ function MainScreen({ nearestStation }) {
       return null;
     }
   };
+  //사용자의 위치 주소로 DB에서 도시 코드 탐색 및 사용자 도시 코드 지정
   const compareCityWithDB = async (newRoadAddr) => {
     try {
       // 서버 요청
@@ -247,6 +248,7 @@ function MainScreen({ nearestStation }) {
         const response = await convertSpeechToTextWithWhisper(uri);
         setRecognizedText(response); // 변환된 텍스트 화면에 표시
         setDestination(response);
+        console.log(response);
         searchPOI(response);
       } catch (error) {
         console.error("녹음 종료 중 오류 발생:", error);
@@ -299,8 +301,8 @@ function MainScreen({ nearestStation }) {
         },
         body: JSON.stringify({
           version: 1,
-          startX: "126.932986",//parseFloat(departureCoords.longitude),
-          startY: "37.371934",  //parseFloat(departureCoords.latitude),
+          startX: parseFloat(departureCoords.longitude),
+          startY: parseFloat(departureCoords.latitude),
           endX: parseFloat(destinationCoords.longitude),
           endY: parseFloat(destinationCoords.latitude),
           startName: '출발지',
@@ -312,6 +314,7 @@ function MainScreen({ nearestStation }) {
       });
       const data = await response.json();
       setRouteData(data);
+
       console.log("경로정보:", data);
     } catch (error) {
       Alert.alert('경로 요청 오류.', error.message);
@@ -343,7 +346,7 @@ function MainScreen({ nearestStation }) {
       return [];
     }
   
-    // WALK 구간에서 첫 번째 인덱스 데이터 추출 ( 도보 -> 정류장 정보 )
+    // WALK 구간에서 첫 번째 인덱스 데이터 추출 ( 출발 정류장까지 가는 도보 경로 정보 )
     const firstWalkingLeg = legs.find((leg) => leg.mode === "WALK");
 
     if (firstWalkingLeg) {
@@ -429,7 +432,7 @@ function MainScreen({ nearestStation }) {
       } catch (error) {
       }
     };
-    //마을 버스의 경우 경기와 서울 버스 API로 재검색
+    //TAGO API 탐색 실패 시 경기와 서울 독자 버스 API로 재검색
     const getCityRouteList = async (routeNumber) => {
       if(cityInfo.city_do = "경기도"){
         const gyeonggiRouteUrl = `http://apis.data.go.kr/6410000/busrouteservice/getBusRouteList?serviceKey=${apiKey}&keyword=${routeNumber}`;
@@ -1079,10 +1082,6 @@ const fetchAdjacentStops = async () => {
   // UI 렌더링
   return (
     <View style={styles.container}>
-      {/* 초기화 버튼 */}
-      <TouchableOpacity style={styles.resetButton} onPress={handleReset}>
-        <Text style={styles.resetText}>초기화</Text>
-      </TouchableOpacity>
       <View style={styles.messageContainer}>
         <Text style={styles.messageText}>{messages[currentStep].text}</Text>
         {messages[currentStep].useTap && (
@@ -1124,44 +1123,30 @@ const fetchAdjacentStops = async () => {
           ) : (
             <Text>경로 데이터가 없습니다.</Text>
           )}
-          {/* 재요청 버튼 */}
-          <TouchableOpacity
-            onPress={requestRoute}
-            style={{
-              marginTop: 20,
-              padding: 10,
-              backgroundColor: '#007BFF',
-              borderRadius: 5,
-            }}
-          >
-            <Text style={{ color: '#fff', textAlign: 'center', fontSize: 16 }}>
-              경로 재요청
-            </Text>
-          </TouchableOpacity>
         </View>
       )}
       {/* 정류장 안내 (2단계)*/}
       {currentStep === 2 && (
         <TouchableOpacity style={styles.touchButton} onPress={handleTap}>
-          <Text style={styles.touchButtonText}>Touch!</Text>
+          <Text style={styles.touchButtonText}>TAP!</Text>
         </TouchableOpacity>
       )}
       {/* 버스와의 거리 안내 (4단계) */}
       {currentStep === 4&& (
       <TouchableOpacity style={styles.touchButton} onPress={handleTap}>
-        <Text style={styles.touchButtonText}>Touch!</Text>
+        <Text style={styles.touchButtonText}>TAP!</Text>
       </TouchableOpacity>
       )}
       {/* 탑승 확인 (5단계) */}
       {currentStep === 5&& (
       <TouchableOpacity style={styles.touchButton} onPress={handleTap}>
-        <Text style={styles.touchButtonText}>Touch!</Text>
+        <Text style={styles.touchButtonText}>TAP!</Text>
       </TouchableOpacity>
       )}
       {/* 목적지까지의 거리 안내 (6단계) */}
       {currentStep === 6&& (
       <TouchableOpacity style={styles.touchButton} onPress={handleTap}>
-        <Text style={styles.touchButtonText}>Touch!</Text>
+        <Text style={styles.touchButtonText}>TAP!</Text>
       </TouchableOpacity>
       )}
 
@@ -1177,7 +1162,7 @@ const fetchAdjacentStops = async () => {
           }}
         >
           <Text style={styles.touchButtonText}>
-            {currentStep === messages.length - 1 ? "완료" : "Touch!"}
+            {currentStep === messages.length - 1 ? "완료" : "TAP!"}
           </Text>
         </TouchableOpacity>
       )}
@@ -1201,7 +1186,7 @@ const styles = StyleSheet.create({
     fontSize: 24,
     color: '#000',
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: 50,
   },
   optionText: {
     fontSize: 18,
@@ -1215,16 +1200,16 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   touchButton: {
-    width: 150,
-    height: 150,
-    borderRadius: 75,
+    width: 300,
+    height: 300,
+    borderRadius: 150,
     backgroundColor: '#F3C623',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 20,
   },
   touchButtonText: {
-    fontSize: 24,
+    fontSize: 80,
     color: '#FFF',
   },
   resetButton: {
